@@ -27,7 +27,7 @@ pipeline {
     
     stages {
         stage('Checkout') {
-            agent { label 'master' }
+            agent any
             steps {
                 echo "Checking out source code..."
                 checkout scm
@@ -36,11 +36,23 @@ pipeline {
                     if (env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'master') {
                         env.VERSION = "v${env.BUILD_NUMBER}"
                         env.IS_RELEASE = 'true'
+                        env.DEPLOY_TO = 'production'
+                    } else if (env.BRANCH_NAME == 'develop') {
+                        env.VERSION = "dev-${env.BUILD_NUMBER}-${env.GIT_COMMIT[0..7]}"
+                        env.IS_RELEASE = 'false'
+                        env.DEPLOY_TO = 'staging'
+                    } else if (env.BRANCH_NAME.startsWith('feature/')) {
+                        env.VERSION = "feature-${env.BUILD_NUMBER}-${env.GIT_COMMIT[0..7]}"
+                        env.IS_RELEASE = 'false'
+                        env.DEPLOY_TO = 'none'
                     } else {
                         env.VERSION = "${env.BRANCH_NAME}-${env.BUILD_NUMBER}-${env.GIT_COMMIT[0..7]}"
                         env.IS_RELEASE = 'false'
+                        env.DEPLOY_TO = 'none'
                     }
                     echo "Building version: ${env.VERSION}"
+                    echo "Branch: ${env.BRANCH_NAME}"
+                    echo "Deploy target: ${env.DEPLOY_TO}"
                 }
             }
         }
@@ -252,13 +264,13 @@ pipeline {
         success {
             node('master') {
                 echo "Pipeline succeeded!"
-                // Add notification for email here
+                // Add notification logic here (email, Slack, etc.)
             }
         }
         failure {
             node('master') {
                 echo "Pipeline failed!"
-                // Add notificiation for failure to connect to email here
+                // Add failure notification logic here
             }
         }
     }
