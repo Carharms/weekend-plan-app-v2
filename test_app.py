@@ -8,7 +8,8 @@ import json
 import sys
 import os
 
-# alter this and determine what testing logic to use - selenium
+# alter this and determine what testing logic to use - selenium?
+# test for Jenkins
 from unittest.mock import patch, MagicMock
 
 # Add the app directory to the path
