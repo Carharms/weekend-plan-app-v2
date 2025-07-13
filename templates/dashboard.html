@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Weekend Task Manager</h1>
+
+<div class="weekend-grid">
+    <div class="day-column">
+        <div class="day-header">Friday</div>
+        {% for task in tasks %}
+            {% if task.day == 'Friday' %}
+                <div class="task-item">
+                    <div class="task-time">{{ task.start_time }}</div>
+                    <div><strong>{{ task.event }}</strong></div>
+                    {% if task.description %}
+                        <div>{{ task.description }}</div>
+                    {% endif %}
+                    {% if task.additional_links %}
+                        <div><a href="{{ task.additional_links }}" target="_blank">Link</a></div>
+                    {% endif %}
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+    
+    <div class="day-column">
+        <div class="day-header">Saturday</div>
+        {% for task in tasks %}
+            {% if task.day == 'Saturday' %}
+                <div class="task-item">
+                    <div class="task-time">{{ task.start_time }}</div>
+                    <div><strong>{{ task.event }}</strong></div>
+                    {% if task.description %}
+                        <div>{{ task.description }}</div>
+                    {% endif %}
+                    {% if task.additional_links %}
+                        <div><a href="{{ task.additional_links }}" target="_blank">Link</a></div>
+                    {% endif %}
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+    
+    <div class="day-column">
+        <div class="day-header">Sunday</div>
+        {% for task in tasks %}
+            {% if task.day == 'Sunday' %}
+                <div class="task-item">
+                    <div class="task-time">{{ task.start_time }}</div>
+                    <div><strong>{{ task.event }}</strong></div>
+                    {% if task.description %}
+                        <div>{{ task.description }}</div>
+                    {% endif %}
+                    {% if task.additional_links %}
+                        <div><a href="{{ task.additional_links }}" target="_blank">Link</a></div>
+                    {% endif %}
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+</div>
+
+{% if not tasks %}
+    <p>No tasks added yet. <a href="{{ url_for('add_task') }}">Add your first task!</a></p>
+{% endif %}
+{% endblock %}
