@@ -9,6 +9,7 @@ pipeline {
     
     environment {
         // Version management
+        // test
         VERSION = "${env.BUILD_NUMBER}-${env.GIT_COMMIT[0..7]}"
         APP_NAME = "weekend-task-manager"
         
