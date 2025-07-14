@@ -23,6 +23,11 @@ pipeline {
         DB_USER = 'root'
         DB_PASSWORD = 'password'
         DB_PORT = '3306'
+
+        // FOR LATER - ADJUST AND CONFIGURE
+        WEBHOOK_TOKEN = 'weekend-task-manager-webhook'
+        SLACK_CHANNEL = '#ci-cd'
+        EMAIL_RECIPIENTS = 'your-email@example.com'
     }
     
     stages {
@@ -56,6 +61,9 @@ pipeline {
                 }
             }
         }
+        
+        
+
         
         stage('Build & Test') {
             parallel {
