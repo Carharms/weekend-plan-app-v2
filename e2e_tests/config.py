@@ -14,6 +14,7 @@ class TestConfig:
     TEST_LINKS = "https://playwright.dev"
     
     # Browser settings
+    # test
     BROWSER_HEADLESS = os.getenv('HEADLESS', 'true').lower() == 'true'
     BROWSER_SLOWMO = int(os.getenv('SLOWMO', '100'))  
     
