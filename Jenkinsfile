@@ -1,136 +1,96 @@
 pipeline {
     agent none
     
-    options {
-        buildDiscarder(logRotator(numToKeepStr: '10'))
-        timeout(time: 30, unit: 'MINUTES')
-        timestamps()
-    }
-    
     environment {
-        // Version management
-        // test
-        VERSION = "${env.BUILD_NUMBER}-${env.GIT_COMMIT[0..7]}"
-        APP_NAME = "weekend-task-manager"
-        
-        // SonarQube configuration
-        SONAR_PROJECT_KEY = "weekend-task-manager"
-        SONAR_PROJECT_NAME = "Weekend Task Manager"
-        SONAR_SCANNER_HOME = tool 'SonarQubeScanner'
-        
-        // Database configuration for testing
+        DOCKER_IMAGE = 'weekend-task-manager'
+        DOCKER_TAG = "${BUILD_NUMBER}"
+        SONAR_PROJECT_KEY = 'weekend-task-manager'
         DB_HOST = 'localhost'
         DB_NAME = 'weekend_tasks_test'
         DB_USER = 'root'
         DB_PASSWORD = 'password'
-        DB_PORT = '3306'
-
-        // FOR LATER - ADJUST AND CONFIGURE
-        WEBHOOK_TOKEN = 'weekend-task-manager-webhook'
-        SLACK_CHANNEL = '#ci-cd'
-        EMAIL_RECIPIENTS = 'your-email@example.com'
     }
     
     stages {
         stage('Checkout') {
-            agent any
+            agent { label 'main' }
             steps {
-                echo "Checking out source code..."
                 checkout scm
                 script {
-                    // Set version based on branch
-                    if (env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'master') {
-                        env.VERSION = "v${env.BUILD_NUMBER}"
-                        env.IS_RELEASE = 'true'
-                        env.DEPLOY_TO = 'production'
-                    } else if (env.BRANCH_NAME == 'develop') {
-                        env.VERSION = "dev-${env.BUILD_NUMBER}-${env.GIT_COMMIT[0..7]}"
-                        env.IS_RELEASE = 'false'
-                        env.DEPLOY_TO = 'staging'
-                    } else if (env.BRANCH_NAME.startsWith('feature/')) {
-                        env.VERSION = "feature-${env.BUILD_NUMBER}-${env.GIT_COMMIT[0..7]}"
-                        env.IS_RELEASE = 'false'
-                        env.DEPLOY_TO = 'none'
+                    if (env.BRANCH_NAME == 'main') {
+                        env.DEPLOY_ENV = 'production'
                     } else {
-                        env.VERSION = "${env.BRANCH_NAME}-${env.BUILD_NUMBER}-${env.GIT_COMMIT[0..7]}"
-                        env.IS_RELEASE = 'false'
-                        env.DEPLOY_TO = 'none'
+                        env.DEPLOY_ENV = 'staging'
                     }
-                    echo "Building version: ${env.VERSION}"
-                    echo "Branch: ${env.BRANCH_NAME}"
-                    echo "Deploy target: ${env.DEPLOY_TO}"
+                }
+            }
+        }
+
+        stage('Branch Logic') {
+            steps {
+                script {
+                    if (env.BRANCH_NAME == 'main') {
+                        echo "Prod deployment to main branch"
+                        env.DEPLOY_ENV = 'production'
+                        env.RUN_PERFORMANCE_TESTS = 'true'
+                    } else if (env.BRANCH_NAME == 'develop') {
+                        echo "Staging deployment to branch"
+                        env.DEPLOY_ENV = 'staging'
+                        env.RUN_PERFORMANCE_TESTS = 'false'
+                    } else {
+                        echo "Feature branch detected: Running tests only"
+                        env.DEPLOY_ENV = 'none'
+                        env.RUN_PERFORMANCE_TESTS = 'false'
+                    }
+                    echo "Calculated DEPLOY_ENV: ${env.DEPLOY_ENV}"
+                    echo "Calculated RUN_PERFORMANCE_TESTS: ${env.RUN_PERFORMANCE_TESTS}"
                 }
             }
         }
         
+        stage('Build') {
+            agent { label 'build' }
+            steps {
+                script {
+                    echo "Building for branch: ${env.BRANCH_NAME}"
+                    echo "Deploy environment: ${env.DEPLOY_ENV}"
+                }
+                
+                sh 'pip install -r requirements.txt'
+                
+                // Build Docker image
+                sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
+                sh "docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest"
+            }
+            post {
+                success {
+                    archiveArtifacts artifacts: 'requirements.txt', fingerprint: true
+                }
+            }
+        }
         
-
-        
-        stage('Build & Test') {
+        stage('Test') {
             parallel {
                 stage('Unit Tests') {
                     agent { label 'testing' }
                     steps {
-                        echo "Running unit tests on testing agent..."
-                        sh '''
-                            python3 -m venv venv
-                            . venv/bin/activate
-                            pip install -r requirements.txt
-                            python -m pytest test_app.py -v --junitxml=test-results.xml --cov=app --cov-report=xml
-                        '''
+                        sh 'python -m pytest test_app.py -v --junitxml=test-results.xml'
                     }
                     post {
                         always {
                             junit 'test-results.xml'
-                            archiveArtifacts artifacts: 'test-results.xml', allowEmptyArchive: true
-                            publishCoverage adapters: [
-                                coberturaAdapter('coverage.xml')
-                            ], sourceFileResolver: sourceFiles('STORE_LAST_BUILD')
                         }
                     }
                 }
                 
-                stage('Code Quality Analysis') {
-                    agent { label 'testing' }
+                stage('Code Quality') {
+                    agent { label 'sonar' }
                     steps {
-                        echo "Running code quality analysis..."
                         script {
+                            def scannerHome = tool 'SonarQube Scanner'
                             withSonarQubeEnv('SonarQube') {
-                                sh '''
-                                    python3 -m venv venv
-                                    . venv/bin/activate
-                                    pip install -r requirements.txt
-                                    
-                                    # Run flake8 for linting
-                                    flake8 app.py --output-file=flake8-report.txt --tee
-                                    
-                                    # Run tests with coverage for SonarQube
-                                    python -m pytest test_app.py --cov=app --cov-report=xml --cov-report=html
-                                    
-                                    # Run SonarQube analysis
-                                    ${SONAR_SCANNER_HOME}/bin/sonar-scanner \
-                                        -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                                        -Dsonar.projectName="${SONAR_PROJECT_NAME}" \
-                                        -Dsonar.projectVersion=${VERSION} \
-                                        -Dsonar.sources=app.py \
-                                        -Dsonar.tests=test_app.py \
-                                        -Dsonar.python.coverage.reportPaths=coverage.xml \
-                                        -Dsonar.python.flake8.reportPaths=flake8-report.txt
-                                '''
+                                sh "${scannerHome}/bin/sonar-scanner"
                             }
-                        }
-                    }
-                    post {
-                        always {
-                            archiveArtifacts artifacts: 'flake8-report.txt', allowEmptyArchive: true
-                            publishHTML([
-                                allowMissing: false,
-                                alwaysLinkToLastBuild: true,
-                                keepAll: true,
-                                reportDir: 'htmlcov',
-                                reportFiles: 'index.html',
-                                reportName: 'Coverage Report'
-                            ])
                         }
                     }
                 }
@@ -138,149 +98,101 @@ pipeline {
         }
         
         stage('Quality Gate') {
-            agent { label 'testing' }
+            agent { label 'sonar' }
             steps {
-                echo "Waiting for SonarQube Quality Gate..."
-                timeout(time: 10, unit: 'MINUTES') {
+                timeout(time: 1, unit: 'HOURS') {
                     waitForQualityGate abortPipeline: true
                 }
             }
         }
         
-        stage('Build Artifacts') {
-            agent { label 'deployment' }
+        stage('Database Setup') {
+            agent { label 'database' }
             when {
                 anyOf {
                     branch 'main'
-                    branch 'master'
                     branch 'develop'
-                    expression { return env.BRANCH_NAME.startsWith('release/') }
                 }
             }
             steps {
-                echo "Building application artifacts..."
-                sh '''
-                    # Create application package
-                    mkdir -p dist
-                    
-                    # Create version file
-                    echo "${VERSION}" > VERSION
-                    
-                    # Package application
-                    tar -czf dist/${APP_NAME}-${VERSION}.tar.gz \
-                        app.py \
-                        requirements.txt \
-                        VERSION \
-                        templates/ \
-                        static/ \
-                        --exclude='.git' \
-                        --exclude='venv' \
-                        --exclude='__pycache__' \
-                        --exclude='*.pyc'
-                    
-                    # Create Docker image (if Dockerfile exists)
-                    if [ -f Dockerfile ]; then
-                        docker build -t ${APP_NAME}:${VERSION} .
-                        docker save ${APP_NAME}:${VERSION} | gzip > dist/${APP_NAME}-${VERSION}-docker.tar.gz
-                    fi
-                    
-                    # Generate checksums
-                    cd dist
-                    sha256sum *.tar.gz > checksums.txt
-                    cd ..
-                '''
+                sh 'mysql -u${DB_USER} -p${DB_PASSWORD} < weekend_tasks.sql'
+                echo 'Database schema created and seeded'
+            }
+        }
+        
+        stage('E2E Tests') {
+            agent { label 'testing' }
+            steps {
+                // Start application
+                sh 'python app.py &'
+                // Period for app to start
+                sh 'sleep 10'
+                
+                // Run E2E tests
+                dir('e2e_tests') {
+                    sh 'pytest test_user_journey.py -v --html=../e2e-report.html --self-contained-html'
+                }
             }
             post {
                 always {
-                    archiveArtifacts artifacts: 'dist/**', allowEmptyArchive: false
-                    archiveArtifacts artifacts: 'VERSION', allowEmptyArchive: false
+                    archiveArtifacts artifacts: 'e2e-report.html', fingerprint: true
+                    publishHTML([
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: '.',
+                        reportFiles: 'e2e-report.html',
+                        reportName: 'E2E Test Report'
+                    ])
                 }
             }
         }
         
-        stage('Deploy to Staging') {
-            agent { label 'deployment' }
-            when {
-                anyOf {
-                    branch 'develop'
-                    expression { return env.BRANCH_NAME.startsWith('release/') }
-                }
-            }
-            steps {
-                echo "Deploying to staging environment..."
-                sh '''
-                    echo "Deploying version ${VERSION} to staging"
-                    # Add your staging deployment commands here
-                    # For example:
-                    # scp dist/${APP_NAME}-${VERSION}.tar.gz staging-server:/opt/apps/
-                    # ssh staging-server "cd /opt/apps && tar -xzf ${APP_NAME}-${VERSION}.tar.gz"
-                '''
-            }
-        }
-        
-        stage('Deploy to Production') {
-            agent { label 'deployment' }
-            when {
-                anyOf {
-                    branch 'main'
-                    branch 'master'
-                }
-            }
-            steps {
-                echo "Deploying to production environment..."
-                input message: 'Deploy to Production?', ok: 'Deploy'
-                sh '''
-                    echo "Deploying version ${VERSION} to production"
-                    # Add your production deployment commands here
-                    # For example:
-                    # scp dist/${APP_NAME}-${VERSION}.tar.gz production-server:/opt/apps/
-                    # ssh production-server "cd /opt/apps && tar -xzf ${APP_NAME}-${VERSION}.tar.gz"
-                '''
-            }
-        }
-        
-        stage('Integration Tests') {
+        stage('Performance Tests') {
             agent { label 'testing' }
             when {
-                anyOf {
-                    branch 'main'
-                    branch 'master'
-                    branch 'develop'
-                }
+                branch 'main'
             }
             steps {
-                echo "Running integration tests..."
-                sh '''
-                    python3 -m venv venv
-                    . venv/bin/activate
-                    pip install -r requirements.txt
-                    
-                    # Run integration tests (you can add more comprehensive tests here)
-                    python -m pytest test_app.py::WeekendTaskManagerTests::test_api_get_tasks -v
-                    python -m pytest test_app.py::WeekendTaskManagerTests::test_health_check_healthy -v
-                '''
+                dir('performance_testing') {
+                    sh 'chmod +x run_performance_tests.sh'
+                    sh './run_performance_tests.sh'
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'performance_testing/performance_results/*', fingerprint: true
+                }
+            }
+        }
+        
+        stage('Deploy') {
+            agent { label 'deployment' }
+            when {
+                branch 'main'
+            }
+            steps {
+                echo "Deploying to ${env.DEPLOY_ENV}"
+                sh "docker run -d -p 5000:5000 --name weekend-app-${BUILD_NUMBER} ${DOCKER_IMAGE}:${DOCKER_TAG}"
             }
         }
     }
     
     post {
         always {
-            node('master') {
-                echo "Pipeline completed for ${env.BRANCH_NAME} - Version: ${env.VERSION}"
+            node('main') {
                 cleanWs()
             }
         }
         success {
-            node('master') {
-                echo "Pipeline succeeded!"
-                // Add notification logic here (email, Slack, etc.)
-            }
+            slackSend channel: '#devops',
+                     color: 'good',
+                     message: "PIPELINE SUCCESS: ${env.JOB_NAME} - ${env.BUILD_NUMBER}"
         }
         failure {
-            node('master') {
-                echo "Pipeline failed!"
-                // Add failure notification logic here
-            }
+            slackSend channel: '#devops',
+                     color: 'danger',
+                     message: "PIPELINE FAILURE: ${env.JOB_NAME} - ${env.BUILD_NUMBER}"
         }
     }
 }
