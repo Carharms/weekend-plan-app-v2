@@ -68,43 +68,58 @@ pipeline {
             }
         }
 // test
-        stage('Code Quality Analysis and Quality Gate') { 
+        stage('Code Quality Analysis') {
             agent { label 'testing' }
             steps {
                 script {
-                    // Create SonarQube project properties
+                    // Check if SonarQube is accessible
+                    try {
+                        bat 'curl -f http://localhost:9000/api/system/status || echo "SonarQube not accessible"'
+                    } catch (Exception e) {
+                        echo "Warning: SonarQube server check failed: ${e.getMessage()}"
+                    }
+                    
+                    // Enhanced SonarQube project properties
                     writeFile file: 'sonar-project.properties', text: """
-                        sonar.projectKey=${SONAR_PROJECT_KEY}
-                        sonar.projectName=Weekend Task Manager
-                        sonar.projectVersion=${VERSION}
-                        sonar.sources=.
-                        sonar.exclusions=**/venv/**,**/__pycache__/**,**/dist/**
-                        sonar.python.coverage.reportPaths=coverage.xml
-                        sonar.host.url=http://host.docker.internal:9000
+        sonar.projectKey=${SONAR_PROJECT_KEY}
+        sonar.projectName=Weekend Task Manager
+        sonar.projectVersion=${VERSION}
+        sonar.sources=.
+        sonar.exclusions=**/node_modules/**,**/dist/**,**/build/**,**/*.pyc,**/venv/**,**/__pycache__/**
+        sonar.python.coverage.reportPaths=coverage.xml
+        sonar.python.xunit.reportPath=test-results.xml
+        sonar.qualitygate.wait=true
+        sonar.host.url=http://localhost:9000
                     """
 
-                    // Run tests and coverage
+                    // Run analysis with Windows commands
                     bat '''
                         pip install coverage pytest
-                        coverage run -m pytest test_app.py --junitxml=test-results.xml || echo "Tests completed"
-                        coverage xml || echo "Coverage generated"
+                        coverage run -m pytest test_app.py --junitxml=test-results.xml || echo "Tests completed with issues"
+                        coverage xml || echo "Coverage report generated"
                     '''
 
-                    // Use Docker to run SonarQube Scanner AND wait for Quality Gate
-                    withSonarQubeEnv('SonarQube') { // This block sets context for both
-                        bat '''
-                            docker run --rm ^
-                                -v "%cd%":/usr/src ^
-                                -e SONAR_HOST_URL=http://host.docker.internal:9000 ^
-                                -e SONAR_TOKEN=%SONAR_AUTH_TOKEN% ^
-                                sonarsource/sonar-scanner-cli
-                        '''
-
-                        // This is crucial: Call waitForQualityGate() WITHIN this block
-                        timeout(time: 5, unit: 'MINUTES') {
-                            def qg = waitForQualityGate()
-                            if (qg.status != 'OK') {
-                                error "Quality Gate failed: ${qg.status}"
+                    // Check if SonarQube Scanner tool is available
+                    script {
+                        try {
+                            def scannerHome = tool 'SonarQube Scanner'
+                            echo "SonarQube Scanner found at: ${scannerHome}"
+                            
+                            withSonarQubeEnv('SonarQube') {
+                                bat "\"${scannerHome}\\bin\\sonar-scanner.bat\""
+                            }
+                        } catch (Exception e) {
+                            echo "Error with SonarQube Scanner tool: ${e.getMessage()}"
+                            
+                            // Fallback: Try to run scanner directly if installed globally
+                            try {
+                                withSonarQubeEnv('SonarQube') {
+                                    bat 'sonar-scanner.bat'
+                                }
+                            } catch (Exception fallbackError) {
+                                echo "Fallback also failed: ${fallbackError.getMessage()}"
+                                echo "Please ensure SonarQube Scanner is properly installed and configured in Jenkins"
+                                throw fallbackError
                             }
                         }
                     }
@@ -112,7 +127,37 @@ pipeline {
             }
             post {
                 always {
-                    archiveArtifacts artifacts: 'coverage.xml', allowEmptyArchive: true
+                    archiveArtifacts artifacts: 'sonar-project.properties', fingerprint: true
+                    archiveArtifacts artifacts: 'coverage.xml', fingerprint: true, allowEmptyArchive: true
+                    archiveArtifacts artifacts: 'test-results.xml', fingerprint: true, allowEmptyArchive: true
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            agent { label 'testing' }
+            steps {
+                timeout(time: 10, unit: 'MINUTES') {
+                    script {
+                        try {
+                            echo "Waiting for SonarQube Quality Gate..."
+                            def qg = waitForQualityGate()
+                            
+                            echo "Quality Gate Status: ${qg.status}"
+                            
+                            if (qg.status != 'OK') {
+                                echo "Quality Gate Failed! Status: ${qg.status}"
+                                error "Pipeline aborted due to quality gate failure: ${qg.status}"
+                            }
+                            
+                            echo "✅ Quality Gate passed successfully!"
+                            
+                        } catch (Exception e) {
+                            echo "Quality Gate check failed: ${e.getMessage()}"
+                            echo "This might be due to SonarQube server connectivity issues"
+                            throw e
+                        }
+                    }
                 }
             }
         }
