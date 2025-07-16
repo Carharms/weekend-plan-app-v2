@@ -68,19 +68,19 @@ pipeline {
             }
         }
 // test
-        stage('Code Quality Analysis') {
+        stage('Code Quality Analysis and Quality Gate') { 
             agent { label 'testing' }
             steps {
                 script {
                     // Create SonarQube project properties
                     writeFile file: 'sonar-project.properties', text: """
-        sonar.projectKey=${SONAR_PROJECT_KEY}
-        sonar.projectName=Weekend Task Manager
-        sonar.projectVersion=${VERSION}
-        sonar.sources=.
-        sonar.exclusions=**/venv/**,**/__pycache__/**,**/dist/**
-        sonar.python.coverage.reportPaths=coverage.xml
-        sonar.host.url=http://host.docker.internal:9000
+                        sonar.projectKey=${SONAR_PROJECT_KEY}
+                        sonar.projectName=Weekend Task Manager
+                        sonar.projectVersion=${VERSION}
+                        sonar.sources=.
+                        sonar.exclusions=**/venv/**,**/__pycache__/**,**/dist/**
+                        sonar.python.coverage.reportPaths=coverage.xml
+                        sonar.host.url=http://YOUR_WINDOWS_IP_ADDRESS:9000
                     """
 
                     // Run tests and coverage
@@ -90,31 +90,32 @@ pipeline {
                         coverage xml || echo "Coverage generated"
                     '''
 
-                    // Use Docker to run SonarQube Scanner - this now works
-                    withSonarQubeEnv('SonarQube') {
+                    // Use Docker to run SonarQube Scanner AND wait for Quality Gate
+                    withSonarQubeEnv('SonarQube') { // This block sets context for both
                         bat '''
                             docker run --rm ^
                                 -v "%cd%":/usr/src ^
-                                -e SONAR_HOST_URL=http://host.docker.internal:9000 ^
+                                -e SONAR_HOST_URL=http://YOUR_WINDOWS_IP_ADDRESS:9000 ^
                                 -e SONAR_TOKEN=%SONAR_AUTH_TOKEN% ^
                                 sonarsource/sonar-scanner-cli
                         '''
-                    // waitForQualityGate here
-                timeout(time: 5, unit: 'MINUTES') {
-                    def qg = waitForQualityGate()
-                    if (qg.status != 'OK') {
-                        error "Quality Gate failed: ${qg.status}"
+
+                        // This is crucial: Call waitForQualityGate() WITHIN this block
+                        timeout(time: 5, unit: 'MINUTES') {
+                            def qg = waitForQualityGate()
+                            if (qg.status != 'OK') {
+                                error "Quality Gate failed: ${qg.status}"
+                            }
+                        }
                     }
                 }
             }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'coverage.xml', allowEmptyArchive: true
+                }
+            }
         }
-    }
-    post {
-        always {
-            archiveArtifacts artifacts: 'coverage.xml', allowEmptyArchive: true
-        }
-    }
-}
 
         stage('Database Setup') {
             agent { label 'database' }
