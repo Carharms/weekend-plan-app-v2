@@ -18,7 +18,7 @@ DB_CONFIG = {
     'port': int(os.environ.get('DB_PORT', '3306'))
 }
 
-#test2 - gingeres f
+#test2 - ginge
 def get_db_connection():
     """Get MySQL database connection"""
     try:
