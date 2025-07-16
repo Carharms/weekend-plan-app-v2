@@ -100,7 +100,7 @@ sonar.host.url=http://localhost:9000
             '''
 
             // Use the tool directive to get the correct path
-            def scannerHome = tool 'SonarQube Scanner'
+            def scannerHome = tool 'SonarQube'
             echo "SonarQube Scanner path: ${scannerHome}"
             
             withSonarQubeEnv('SonarQube') {
