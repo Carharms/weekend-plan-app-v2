@@ -72,9 +72,9 @@ pipeline {
     agent { label 'testing' }
     steps {
         script {
-            // Check if SonarQube is accessible - use consistent shell commands
+            // Check if SonarQube is accessible
             try {
-                sh 'curl -f http://localhost:9000/api/system/status || echo "SonarQube not accessible"'
+                bat 'curl -f http://localhost:9000/api/system/status || echo "SonarQube not accessible"'
             } catch (Exception e) {
                 echo "Warning: SonarQube server check failed: ${e.getMessage()}"
             }
@@ -92,8 +92,8 @@ sonar.qualitygate.wait=true
 sonar.host.url=http://localhost:9000
             """
 
-            // Run analysis with Unix commands (pytest, coverage)
-            sh '''
+            // Run analysis with Windows commands (pytest, coverage)
+            bat '''
                 pip install coverage pytest
                 coverage run -m pytest test_app.py --junitxml=test-results.xml || echo "Tests completed with issues"
                 coverage xml || echo "Coverage report generated"
@@ -104,8 +104,13 @@ sonar.host.url=http://localhost:9000
             echo "SonarQube Scanner path: ${scannerHome}"
             
             withSonarQubeEnv('SonarQube') {
-                // Use Unix shell command instead of bat
-                sh "${scannerHome}/bin/sonar-scanner"
+                // Add explicit host URL if needed
+                sh """
+                    ${scannerHome}/bin/sonar-scanner \
+                    -Dsonar.host.url=http://localhost:9000 \
+                    -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                    -Dsonar.projectVersion=${VERSION}
+                """
             }
         }
     }
@@ -114,6 +119,34 @@ sonar.host.url=http://localhost:9000
             archiveArtifacts artifacts: 'sonar-project.properties', fingerprint: true
             archiveArtifacts artifacts: 'coverage.xml', fingerprint: true, allowEmptyArchive: true
             archiveArtifacts artifacts: 'test-results.xml', fingerprint: true, allowEmptyArchive: true
+        }
+    }
+}
+//test
+stage('Quality Gate') {
+    agent { label 'testing' }
+    steps {
+        timeout(time: 10, unit: 'MINUTES') {
+            script {
+                try {
+                    echo "Waiting for SonarQube Quality Gate..."
+                    def qg = waitForQualityGate()
+
+                    echo "Quality Gate Status: ${qg.status}"
+
+                    if (qg.status != 'OK') {
+                        echo "Quality Gate Failed! Status: ${qg.status}"
+                        error "Pipeline aborted due to quality gate failure: ${qg.status}"
+                    }
+
+                    echo "✅ Quality Gate passed successfully!"
+
+                } catch (Exception e) {
+                    echo "Quality Gate check failed: ${e.getMessage()}"
+                    echo "This might be due to SonarQube server connectivity issues or no analysis being triggered."
+                    throw e
+                }
+            }
         }
     }
 }
