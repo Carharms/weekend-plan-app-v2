@@ -80,7 +80,7 @@ pipeline {
                         sonar.sources=.
                         sonar.exclusions=**/venv/**,**/__pycache__/**,**/dist/**
                         sonar.python.coverage.reportPaths=coverage.xml
-                        sonar.host.url=http://YOUR_WINDOWS_IP_ADDRESS:9000
+                        sonar.host.url=http://localhost:9000
                     """
 
                     // Run tests and coverage
