@@ -95,7 +95,7 @@ pipeline {
                         bat '''
                             docker run --rm ^
                                 -v "%cd%":/usr/src ^
-                                -e SONAR_HOST_URL=http://YOUR_WINDOWS_IP_ADDRESS:9000 ^
+                                -e SONAR_HOST_URL=http://localhost:9000 ^
                                 -e SONAR_TOKEN=%SONAR_AUTH_TOKEN% ^
                                 sonarsource/sonar-scanner-cli
                         '''
