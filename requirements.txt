@@ -1,21 +1,22 @@
-# Application Core Dependencies
-Flask==2.3.2  # Or your specific web framework (e.g., Django, FastAPI)
-gunicorn==21.2.0 # A WSGI HTTP Server for UNIX
-mysql-connector-python==8.0.33 # For MySQL database interaction (adjust if using a different DB)
+# app core dependencies
+Flask==2.2.5
+gunicorn==21.2.0
+mysql-connector-python==8.0.33
 
-# Development and Testing Dependencies
-# For running the application locally and basic development
-python-dotenv==1.0.0 # For managing environment variables
+# testing dependencies and env variables
+python-dotenv==1.0.0
 
-# Code Quality Analysis (as per Jenkinsfile)
+# code QA
 pylint==2.17.4
 flake8==6.0.0
-coverage==7.2.7 # For code coverage reports
-pytest==7.4.0 # General testing framework
+# code coverage reports
+coverage==7.2.7
+# general testing framework
+pytest==7.4.0 
 
-# Selenium E2E Testing Dependencies
-selenium==4.10.0 # The core Selenium WebDriver library
-webdriver-manager==4.0.0 # Helps manage browser drivers (e.g., ChromeDriver)
+# selenium e2e
+selenium==4.10.0
+webdriver-manager==4.0.0
 
-# Performance Testing Dependencies (as per Jenkinsfile)
-locust==2.15.1 # For load testing
+# load testing
+locust==2.15.1
