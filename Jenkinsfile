@@ -37,10 +37,9 @@ pipeline {
                     echo "Package name: ${env.PACKAGE_NAME}"
                 }
 
-                // Install dependencies (assuming a simple Python app)
                 sh 'pip install -r requirements.txt'
 
-                // Create application package (tar.gz)
+                // Create artificants
                 sh """
                     mkdir -p dist
                     tar -czf dist/${PACKAGE_NAME}.tar.gz \
@@ -55,11 +54,12 @@ pipeline {
                     ls -la
                 """
 
-                // Build Docker image
                 sh """
                     docker build -t ${DOCKER_IMAGE}:${VERSION} .
                 """
             }
+
+            // Fingerprints allow tracking of files across different builds
             post {
                 success {
                     archiveArtifacts artifacts: 'dist/**', fingerprint: true
@@ -69,50 +69,50 @@ pipeline {
         }
 
         stage('Code Quality Analysis') {
-            agent { label 'sonar' }
+            agent { label 'testing' }
             steps {
                 script {
-                    // Minimal SonarQube project properties
+                    // SonarQube config
                     writeFile file: 'sonar-project.properties', text: """
-sonar.projectKey=${SONAR_PROJECT_KEY}
-sonar.projectName=Weekend Task Manager
-sonar.projectVersion=${VERSION}
-sonar.sources=.
-sonar.qualitygate.wait=true
-                    """
+                    sonar.projectKey=${SONAR_PROJECT_KEY}
+                    sonar.projectName=Weekend Task Manager
+                    sonar.projectVersion=${VERSION}
+                    sonar.sources=.
+                    sonar.exclusions=**/venv/**,**/__pycache__/**,**/dist/**
+                    sonar.python.coverage.reportPaths=coverage.xml
+                    sonar.qualitygate.wait=true
+                                """
 
-                    // Run analysis tools (simplified to only pytest coverage for SonarQube)
+                    // Run basic analysis
                     sh '''
                         pip install coverage pytest
-                        coverage run -m pytest test_app.py --junitxml=test-results.xml || true
+                        coverage run -m pytest test_app.py || true
                         coverage xml
                     '''
 
-                    // Run SonarQube analysis
+                    // Run SonarQube scan
                     def scannerHome = tool 'SonarQube Scanner'
                     withSonarQubeEnv('SonarQube') {
-                        sh "${scannerHome}/bin/sonar-scanner -Dsonar.projectVersion=${VERSION}"
+                        sh "${scannerHome}/bin/sonar-scanner"
                     }
                 }
             }
             post {
                 always {
-                    archiveArtifacts artifacts: 'sonar-project.properties', fingerprint: true
-                    archiveArtifacts artifacts: 'coverage.xml', fingerprint: true, allowEmptyArchive: true
+                    archiveArtifacts artifacts: 'coverage.xml', allowEmptyArchive: true
                 }
             }
         }
 
         stage('Quality Gate') {
-            agent { label 'sonar' }
+            agent { label 'testing' }
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
                     script {
                         def qg = waitForQualityGate()
                         if (qg.status != 'OK') {
-                            error "Pipeline aborted due to quality gate failure: ${qg.status}"
+                            error "Quality Gate failed: ${qg.status}"
                         }
-                        echo "Quality Gate passed successfully!"
                     }
                 }
             }
