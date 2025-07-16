@@ -80,7 +80,7 @@ pipeline {
                         sonar.sources=.
                         sonar.exclusions=**/venv/**,**/__pycache__/**,**/dist/**
                         sonar.python.coverage.reportPaths=coverage.xml
-                        sonar.host.url=http://localhost:9000
+                        sonar.host.url=http://host.docker.internal:9000
                     """
 
                     // Run tests and coverage
@@ -95,7 +95,7 @@ pipeline {
                         bat '''
                             docker run --rm ^
                                 -v "%cd%":/usr/src ^
-                                -e SONAR_HOST_URL=http://localhost:9000 ^
+                                -e SONAR_HOST_URL=http://host.docker.internal:9000 ^
                                 -e SONAR_TOKEN=%SONAR_AUTH_TOKEN% ^
                                 sonarsource/sonar-scanner-cli
                         '''
