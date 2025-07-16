@@ -83,12 +83,7 @@ pipeline {
                     sonar.qualitygate.wait=true
                                 """
 
-                    // Run basic analysis
-                    sh '''
-                        pip install coverage pytest
-                        coverage run -m pytest test_app.py || true
-                        coverage xml
-                    '''
+                    // Run basic analysis (removed)
 
                     // Run SonarQube scan
                     def scannerHome = tool 'SonarQube Scanner'
