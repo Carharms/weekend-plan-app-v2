@@ -31,6 +31,12 @@ pipeline {
             }
         }
 
+        stage('Test') {
+            steps {
+                sh 'pytest tests/test_e2e.py --junitxml=report.xml'
+            }
+        }
+
         stage('Init DB') {
             steps {
                 sh 'mysql -h $DB_HOST -u $DB_USER -p$DB_PASSWORD < database.sql'
