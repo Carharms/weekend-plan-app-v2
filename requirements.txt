@@ -1,12 +1,21 @@
-# Flask application dependencies
-Flask==2.3.3
-mysql-connector-python==8.1.0
-pytest==7.4.3
-playwright==1.40.0
-pytest-html==4.1.1
-python-dotenv==1.0.0
-pytest-playwright==0.4.3
-pytest-xvfb==3.0.0
-pytest==7.4.3
-pytest-cov==4.1.0
-coverage==7.3.2
+# Application Core Dependencies
+Flask==2.3.2  # Or your specific web framework (e.g., Django, FastAPI)
+gunicorn==21.2.0 # A WSGI HTTP Server for UNIX
+mysql-connector-python==8.0.33 # For MySQL database interaction (adjust if using a different DB)
+
+# Development and Testing Dependencies
+# For running the application locally and basic development
+python-dotenv==1.0.0 # For managing environment variables
+
+# Code Quality Analysis (as per Jenkinsfile)
+pylint==2.17.4
+flake8==6.0.0
+coverage==7.2.7 # For code coverage reports
+pytest==7.4.0 # General testing framework
+
+# Selenium E2E Testing Dependencies
+selenium==4.10.0 # The core Selenium WebDriver library
+webdriver-manager==4.0.0 # Helps manage browser drivers (e.g., ChromeDriver)
+
+# Performance Testing Dependencies (as per Jenkinsfile)
+locust==2.15.1 # For load testing
