@@ -80,7 +80,7 @@ pipeline {
         sonar.sources=.
         sonar.exclusions=**/venv/**,**/__pycache__/**,**/dist/**
         sonar.python.coverage.reportPaths=coverage.xml
-        sonar.host.url=http://host.docker.internal:9000
+        sonar.host.url=http://localhost:9000
                     """
 
                     // Run tests and coverage
@@ -90,7 +90,7 @@ pipeline {
                         coverage xml || echo "Coverage generated"
                     '''
 
-                    // Use Docker to run SonarQube Scanner
+                    // Use Docker to run SonarQube Scanner - this now works
                     withSonarQubeEnv('SonarQube') {
                         bat '''
                             docker run --rm ^
