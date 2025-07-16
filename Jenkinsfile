@@ -68,52 +68,136 @@ pipeline {
             }
         }
 // test
-        stage('Code Quality Analysis and Quality Gate') {
+        // Replace your existing SonarQube stages with these Docker-based versions
+
+stage('Code Quality Analysis and Quality Gate') {
+    agent { label 'testing' }
+    steps {
+        script {
+            // Ensure SonarQube server is running via Docker
+            echo "Starting SonarQube server via Docker..."
+            bat '''
+                docker stop sonarqube || echo "SonarQube container not running"
+                docker rm sonarqube || echo "SonarQube container does not exist"
+                docker run -d --name sonarqube -p 9000:9000 sonarqube:lts-community
+            '''
+            
+            // Wait for SonarQube to be ready
+            echo "Waiting for SonarQube to be ready..."
+            bat '''
+                timeout /t 60 /nobreak >nul
+                for /l %%i in (1,1,30) do (
+                    curl -f http://localhost:9000/api/system/status && goto :ready
+                    echo Waiting for SonarQube... attempt %%i
+                    timeout /t 10 /nobreak >nul
+                )
+                echo SonarQube failed to start
+                exit /b 1
+                :ready
+                echo SonarQube is ready!
+            '''
+
+            // Create SonarQube project properties
+            writeFile file: 'sonar-project.properties', text: """
+sonar.projectKey=${SONAR_PROJECT_KEY}
+sonar.projectName=Weekend Task Manager
+sonar.projectVersion=${VERSION}
+sonar.sources=.
+sonar.exclusions=**/node_modules/**,**/dist/**,**/build/**,**/*.pyc,**/venv/**,**/__pycache__/**
+sonar.python.coverage.reportPaths=coverage.xml
+sonar.python.xunit.reportPath=test-results.xml
+sonar.qualitygate.wait=true
+sonar.host.url=http://localhost:9000
+            """
+
+            // Run tests and coverage
+            bat '''
+                pip install coverage pytest
+                coverage run -m pytest test_app.py --junitxml=test-results.xml || echo "Tests completed with issues"
+                coverage xml || echo "Coverage report generated"
+            '''
+
+            // Run SonarQube Scanner via Docker
+            echo "Running SonarQube Scanner via Docker..."
+            bat """
+                docker run --rm ^
+                    --network host ^
+                    -v "%cd%":/usr/src ^
+                    -w /usr/src ^
+                    sonarsource/sonar-scanner-cli:latest ^
+                    -Dsonar.projectKey=${SONAR_PROJECT_KEY} ^
+                    -Dsonar.projectName="Weekend Task Manager" ^
+                    -Dsonar.projectVersion=${VERSION} ^
+                    -Dsonar.sources=. ^
+                    -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/build/**,**/*.pyc,**/venv/**,**/__pycache__/** ^
+                    -Dsonar.python.coverage.reportPaths=coverage.xml ^
+                    -Dsonar.python.xunit.reportPath=test-results.xml ^
+                    -Dsonar.host.url=http://localhost:9000 ^
+                    -Dsonar.qualitygate.wait=true
+            """
+        }
+    }
+    post {
+        always {
+            archiveArtifacts artifacts: 'sonar-project.properties', fingerprint: true
+            archiveArtifacts artifacts: 'coverage.xml', fingerprint: true, allowEmptyArchive: true
+            archiveArtifacts artifacts: 'test-results.xml', fingerprint: true, allowEmptyArchive: true
+        }
+    }
+}
+
+// Updated Quality Gate stage for Docker
+    stage('Quality Gate') {
         agent { label 'testing' }
         steps {
-            script {
-                // Check if SonarQube is accessible - Windows command
-                try {
-                    bat 'curl -f http://localhost:9000/api/system/status || echo "SonarQube not accessible"'
-                } catch (Exception e) {
-                    echo "Warning: SonarQube server check failed: ${e.getMessage()}"
-                }
-
-                // Enhanced SonarQube project properties
-                writeFile file: 'sonar-project.properties', text: """
-    sonar.projectKey=${SONAR_PROJECT_KEY}
-    sonar.projectName=Weekend Task Manager
-    sonar.projectVersion=${VERSION}
-    sonar.sources=.
-    sonar.exclusions=**/node_modules/**,**/dist/**,**/build/**,**/*.pyc,**/venv/**,**/__pycache__/**
-    sonar.python.coverage.reportPaths=coverage.xml
-    sonar.python.xunit.reportPath=test-results.xml
-    sonar.qualitygate.wait=true
-    sonar.host.url=http://localhost:9000
-                """
-
-                // Run analysis with Windows commands (pytest, coverage)
-                bat '''
-                    pip install coverage pytest
-                    coverage run -m pytest test_app.py --junitxml=test-results.xml || echo "Tests completed with issues"
-                    coverage xml || echo "Coverage report generated"
-                '''
-
-                // Use the tool directive to get the correct path
-                def scannerHome = tool 'SonarQube'
-                echo "SonarQube Scanner path: ${scannerHome}"
-                
-                withSonarQubeEnv('SonarQube') {
-                    // Use Windows batch file path
-                    bat "\"${scannerHome}\\bin\\windows-x86-64\\StartSonar.bat\""
+            timeout(time: 10, unit: 'MINUTES') {
+                script {
+                    try {
+                        echo "Checking Quality Gate via Docker..."
+                        
+                        // Get the latest task ID from SonarQube
+                        def taskId = bat(
+                            script: '''
+                                curl -s "http://localhost:9000/api/ce/activity?component=%SONAR_PROJECT_KEY%&status=SUCCESS,FAILED,CANCELED" | findstr /r "\"id\""
+                            ''',
+                            returnStdout: true
+                        ).trim()
+                        
+                        echo "Latest task info: ${taskId}"
+                        
+                        // Check quality gate status
+                        def qualityGateStatus = bat(
+                            script: '''
+                                curl -s "http://localhost:9000/api/qualitygates/project_status?projectKey=%SONAR_PROJECT_KEY%" | findstr /r "\"status\""
+                            ''',
+                            returnStdout: true
+                        ).trim()
+                        
+                        echo "Quality Gate Status: ${qualityGateStatus}"
+                        
+                        // Simple check - look for "ERROR" in the response
+                        if (qualityGateStatus.contains('"status":"ERROR"')) {
+                            echo "Quality Gate Failed!"
+                            error "Pipeline aborted due to quality gate failure"
+                        }
+                        
+                        echo "✅ Quality Gate passed successfully!"
+                        
+                    } catch (Exception e) {
+                        echo "Quality Gate check failed: ${e.getMessage()}"
+                        echo "This might be due to SonarQube server connectivity issues."
+                        throw e
+                    }
                 }
             }
         }
         post {
             always {
-                archiveArtifacts artifacts: 'sonar-project.properties', fingerprint: true
-                archiveArtifacts artifacts: 'coverage.xml', fingerprint: true, allowEmptyArchive: true
-                archiveArtifacts artifacts: 'test-results.xml', fingerprint: true, allowEmptyArchive: true
+                // Clean up SonarQube container
+                bat '''
+                    docker stop sonarqube || echo "SonarQube container already stopped"
+                    docker rm sonarqube || echo "SonarQube container already removed"
+                '''
             }
         }
     }
