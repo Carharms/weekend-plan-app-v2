@@ -117,7 +117,7 @@ sonar.host.url=http://localhost:9000
         }
     }
 }
-
+//test
 stage('Quality Gate') {
     agent { label 'testing' }
     steps {
