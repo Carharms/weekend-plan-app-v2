@@ -1,9 +1,12 @@
 # Flask application dependencies
-python==3.11
 Flask==2.3.3
 mysql-connector-python==8.1.0
 pytest==7.4.3
 playwright==1.40.0
 pytest-html==4.1.1
 python-dotenv==1.0.0
-
+pytest-playwright==0.4.3
+pytest-xvfb==3.0.0
+pytest==7.4.3
+pytest-cov==4.1.0
+coverage==7.3.2
