@@ -91,6 +91,7 @@ pipeline {
             '''
         }
     }
+        }
 
         stage('E2E Tests with Selenium') {
             agent { label 'testing' }
