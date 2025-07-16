@@ -28,6 +28,7 @@ def debug_user_journey():
         
         page = context.new_page()
         
+        #test
         try:
             print("Debug step 1: going to dashboard")
             page.goto(TestConfig.BASE_URL)
