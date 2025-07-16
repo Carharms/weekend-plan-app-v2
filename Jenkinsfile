@@ -1,12 +1,8 @@
 pipeline {
-    agent {
-        docker {
-            image 'python:3.11-slim'
-        }
-    }
+    agent any
 
     environment {
-        DB_HOST = "localhost"
+        DB_HOST = "host.docker.internal"
         DB_NAME = "weekend_tasks"
         DB_USER = "root"
         DB_PASSWORD = "password"
@@ -14,17 +10,17 @@ pipeline {
     }
 
     stages {
-
-        stage('Install') {
+        stage('Install + Test') {
             steps {
-                sh 'apt-get update && apt-get install -y default-mysql-client chromium-driver'
-                sh 'pip install -r requirements.txt'
-            }
-        }
-
-        stage('Test') {
-            steps {
-                sh 'pytest tests/test_e2e.py --junitxml=report.xml'
+                script {
+                    docker.image('python:3.11-slim').inside {
+                        sh 'apt-get update && apt-get install -y default-mysql-client chromium-driver'
+                        sh 'pip install -r requirements.txt'
+                        sh 'pytest tests/test_e2e.py --junitxml=report.xml'
+                        // Must run junit inside same block where file exists
+                        junit 'report.xml'
+                    }
+                }
             }
         }
 
@@ -35,7 +31,7 @@ pipeline {
             }
         }
 
-        stage('Build') {
+        stage('Build Artifact') {
             steps {
                 script {
                     def version = "1.0.${env.BUILD_ID}"
@@ -56,10 +52,15 @@ pipeline {
             }
         }
 
-        stage('E2E Tests') {
+        stage('E2E Report') {
             steps {
-                sh 'pytest tests/test_e2e.py --html=report.html || true'
-                archiveArtifacts artifacts: 'report.html', fingerprint: true
+                script {
+                    docker.image('python:3.11-slim').inside {
+                        sh 'pytest tests/test_e2e.py --html=report.html || true'
+                        sh 'ls -l report.html' // confirm it exists
+                        archiveArtifacts artifacts: 'report.html', fingerprint: true
+                    }
+                }
             }
         }
 
@@ -67,12 +68,6 @@ pipeline {
             steps {
                 sh 'locust -f locustfile.py --headless -u 10 -r 2 -t 10s --host=http://localhost:5000'
             }
-        }
-    }
-
-    post {
-        always {
-            junit 'report.xml'
         }
     }
 }
