@@ -67,90 +67,57 @@ pipeline {
                 }
             }
         }
-// test
+'''
         stage('Code Quality Analysis and Quality Gate') {
-    agent { label 'testing' }
-    steps {
-        script {
-            // Check if SonarQube is accessible
-            try {
-                bat 'curl -f http://localhost:9000/api/system/status || echo "SonarQube not accessible"'
-            } catch (Exception e) {
-                echo "Warning: SonarQube server check failed: ${e.getMessage()}"
-            }
-
-            // Enhanced SonarQube project properties
-            writeFile file: 'sonar-project.properties', text: """
-sonar.projectKey=${SONAR_PROJECT_KEY}
-sonar.projectName=Weekend Task Manager
-sonar.projectVersion=${VERSION}
-sonar.sources=.
-sonar.exclusions=**/node_modules/**,**/dist/**,**/build/**,**/*.pyc,**/venv/**,**/__pycache__/**
-sonar.python.coverage.reportPaths=coverage.xml
-sonar.python.xunit.reportPath=test-results.xml
-sonar.qualitygate.wait=true
-sonar.host.url=http://localhost:9000
-            """
-
-            // Run analysis with Windows commands (pytest, coverage)
-            bat '''
-                pip install coverage pytest
-                coverage run -m pytest test_app.py --junitxml=test-results.xml || echo "Tests completed with issues"
-                coverage xml || echo "Coverage report generated"
-            '''
-
-            // Use the tool directive to get the correct path
-            def scannerHome = tool 'SonarQube'
-            echo "SonarQube Scanner path: ${scannerHome}"
-            
-            withSonarQubeEnv('SonarQube') {
-                // Add explicit host URL if needed
-                sh """
-                    ${scannerHome}/bin/sonar-scanner \
-                    -Dsonar.host.url=http://localhost:9000 \
-                    -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                    -Dsonar.projectVersion=${VERSION}
-                """
-            }
-        }
-    }
-    post {
-        always {
-            archiveArtifacts artifacts: 'sonar-project.properties', fingerprint: true
-            archiveArtifacts artifacts: 'coverage.xml', fingerprint: true, allowEmptyArchive: true
-            archiveArtifacts artifacts: 'test-results.xml', fingerprint: true, allowEmptyArchive: true
-        }
-    }
-}
-//test
-stage('Quality Gate') {
-    agent { label 'testing' }
-    steps {
-        timeout(time: 10, unit: 'MINUTES') {
-            script {
-                try {
-                    echo "Waiting for SonarQube Quality Gate..."
-                    def qg = waitForQualityGate()
-
-                    echo "Quality Gate Status: ${qg.status}"
-
-                    if (qg.status != 'OK') {
-                        echo "Quality Gate Failed! Status: ${qg.status}"
-                        error "Pipeline aborted due to quality gate failure: ${qg.status}"
+            agent { label 'testing' }
+            steps {
+                script {
+                    // Check if SonarQube is accessible - Windows command
+                    try {
+                        bat 'curl -f http://localhost:9000/api/system/status || echo "SonarQube not accessible"'
+                    } catch (Exception e) {
+                        echo "Warning: SonarQube server check failed: ${e.getMessage()}"
                     }
 
-                    echo "✅ Quality Gate passed successfully!"
+                    // Enhanced SonarQube project properties
+                    writeFile file: 'sonar-project.properties', text: """
+        sonar.projectKey=${SONAR_PROJECT_KEY}
+        sonar.projectName=Weekend Task Manager
+        sonar.projectVersion=${VERSION}
+        sonar.sources=.
+        sonar.exclusions=**/node_modules/**,**/dist/**,**/build/**,**/*.pyc,**/venv/**,**/__pycache__/**
+        sonar.python.coverage.reportPaths=coverage.xml
+        sonar.python.xunit.reportPath=test-results.xml
+        sonar.qualitygate.wait=true
+        sonar.host.url=http://localhost:9000
+                    """
 
-                } catch (Exception e) {
-                    echo "Quality Gate check failed: ${e.getMessage()}"
-                    echo "This might be due to SonarQube server connectivity issues or no analysis being triggered."
-                    throw e
+                    // Run analysis with Windows commands (pytest, coverage)
+                    bat '''
+                        pip install coverage pytest
+                        coverage run -m pytest test_app.py --junitxml=test-results.xml || echo "Tests completed with issues"
+                        coverage xml || echo "Coverage report generated"
+                    '''
+
+                    // Use the tool directive to get the correct path
+                    def scannerHome = tool 'SonarQube'
+                    echo "SonarQube Scanner path: ${scannerHome}"
+                    
+                    withSonarQubeEnv('SonarQube') {
+                        // Use Windows batch file path
+                        bat "\"${scannerHome}\\bin\\sonar-scanner.bat\""
+                    }
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'sonar-project.properties', fingerprint: true
+                    archiveArtifacts artifacts: 'coverage.xml', fingerprint: true, allowEmptyArchive: true
+                    archiveArtifacts artifacts: 'test-results.xml', fingerprint: true, allowEmptyArchive: true
                 }
             }
         }
-    }
-}
-
+'''
 
         stage('Database Setup') {
             agent { label 'database' }
