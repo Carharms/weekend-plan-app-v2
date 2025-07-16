@@ -71,7 +71,7 @@ pipeline {
 
 
         stage('Database Setup') {
-            agent { label 'database' }
+            agent { label 'build' }
             steps {
                 script {
                     echo "Setting up database for ${env.DEPLOY_ENV} environment"
