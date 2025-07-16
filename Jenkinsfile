@@ -71,19 +71,26 @@ pipeline {
 
 
         stage('Database Setup') {
-            agent { label 'build' }
-            steps {
-                script {
-                    echo "Setting up database for ${env.DEPLOY_ENV} environment"
-                    // Create database, run schema, and seed data
-                    sh '''
-                        mysql -u${DB_USER} -p${DB_PASSWORD} -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME};"
-                        mysql -u${DB_USER} -p${DB_PASSWORD} ${DB_NAME} < database/schema.sql
-                        mysql -u${DB_USER} -p${DB_PASSWORD} ${DB_NAME} < database/seed_data.sql
-                    '''
-                }
-            }
+    agent { label 'build' }
+    steps {
+        script {
+            echo "Setting up database for ${env.DEPLOY_ENV} environment"
+            // Create database, run schema, and seed data
+            sh '''
+            # Drop database if it exists to ensure a clean slate for staging/testing
+            mysql -u${DB_USER} -p"${DB_PASSWORD}" -e "DROP DATABASE IF EXISTS ${DB_NAME};"
+
+            # Create database
+            mysql -u${DB_USER} -p"${DB_PASSWORD}" -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME};"
+
+            # Run schema
+            mysql -u${DB_USER} -p"${DB_PASSWORD}" ${DB_NAME} < database/schema.sql
+
+            # Seed data
+            mysql -u${DB_USER} -p"${DB_PASSWORD}" ${DB_NAME} < database/seed_data.sql
+            '''
         }
+    }
 
         stage('E2E Tests with Selenium') {
             agent { label 'testing' }
