@@ -15,15 +15,6 @@ pipeline {
 
     stages {
 
-        stage('Build in Docker') {
-            steps {
-                script {
-                    docker.image('python:3.11-slim').inside('-v /var/run/docker.sock:/var/run/docker.sock') {
-                        sh 'python --version'
-                    }
-                }
-            }
-        }
         stage('Install') {
             steps {
                 sh 'apt-get update && apt-get install -y default-mysql-client chromium-driver'
