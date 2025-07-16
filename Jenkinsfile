@@ -67,57 +67,57 @@ pipeline {
                 }
             }
         }
-'''
+// test
         stage('Code Quality Analysis and Quality Gate') {
-            agent { label 'testing' }
-            steps {
-                script {
-                    // Check if SonarQube is accessible - Windows command
-                    try {
-                        bat 'curl -f http://localhost:9000/api/system/status || echo "SonarQube not accessible"'
-                    } catch (Exception e) {
-                        echo "Warning: SonarQube server check failed: ${e.getMessage()}"
-                    }
-
-                    // Enhanced SonarQube project properties
-                    writeFile file: 'sonar-project.properties', text: """
-        sonar.projectKey=${SONAR_PROJECT_KEY}
-        sonar.projectName=Weekend Task Manager
-        sonar.projectVersion=${VERSION}
-        sonar.sources=.
-        sonar.exclusions=**/node_modules/**,**/dist/**,**/build/**,**/*.pyc,**/venv/**,**/__pycache__/**
-        sonar.python.coverage.reportPaths=coverage.xml
-        sonar.python.xunit.reportPath=test-results.xml
-        sonar.qualitygate.wait=true
-        sonar.host.url=http://localhost:9000
-                    """
-
-                    // Run analysis with Windows commands (pytest, coverage)
-                    bat // add triple apostrophes here
-                        pip install coverage pytest
-                        coverage run -m pytest test_app.py --junitxml=test-results.xml || echo "Tests completed with issues"
-                        coverage xml || echo "Coverage report generated"
-                    /// add triple apostrophes here
-
-                    // Use the tool directive to get the correct path
-                    def scannerHome = tool 'SonarQube'
-                    echo "SonarQube Scanner path: ${scannerHome}"
-                    
-                    withSonarQubeEnv('SonarQube') {
-                        // Use Windows batch file path
-                        bat "\"${scannerHome}\\bin\\sonar-scanner.bat\""
-                    }
+        agent { label 'testing' }
+        steps {
+            script {
+                // Check if SonarQube is accessible - Windows command
+                try {
+                    bat 'curl -f http://localhost:9000/api/system/status || echo "SonarQube not accessible"'
+                } catch (Exception e) {
+                    echo "Warning: SonarQube server check failed: ${e.getMessage()}"
                 }
-            }
-            post {
-                always {
-                    archiveArtifacts artifacts: 'sonar-project.properties', fingerprint: true
-                    archiveArtifacts artifacts: 'coverage.xml', fingerprint: true, allowEmptyArchive: true
-                    archiveArtifacts artifacts: 'test-results.xml', fingerprint: true, allowEmptyArchive: true
+
+                // Enhanced SonarQube project properties
+                writeFile file: 'sonar-project.properties', text: """
+    sonar.projectKey=${SONAR_PROJECT_KEY}
+    sonar.projectName=Weekend Task Manager
+    sonar.projectVersion=${VERSION}
+    sonar.sources=.
+    sonar.exclusions=**/node_modules/**,**/dist/**,**/build/**,**/*.pyc,**/venv/**,**/__pycache__/**
+    sonar.python.coverage.reportPaths=coverage.xml
+    sonar.python.xunit.reportPath=test-results.xml
+    sonar.qualitygate.wait=true
+    sonar.host.url=http://localhost:9000
+                """
+
+                // Run analysis with Windows commands (pytest, coverage)
+                bat '''
+                    pip install coverage pytest
+                    coverage run -m pytest test_app.py --junitxml=test-results.xml || echo "Tests completed with issues"
+                    coverage xml || echo "Coverage report generated"
+                '''
+
+                // Use the tool directive to get the correct path
+                def scannerHome = tool 'SonarQube'
+                echo "SonarQube Scanner path: ${scannerHome}"
+                
+                withSonarQubeEnv('SonarQube') {
+                    // Use Windows batch file path
+                    bat "\"${scannerHome}\\bin\\windows-x86-64\\StartSonar.bat\""
                 }
             }
         }
-'''
+        post {
+            always {
+                archiveArtifacts artifacts: 'sonar-project.properties', fingerprint: true
+                archiveArtifacts artifacts: 'coverage.xml', fingerprint: true, allowEmptyArchive: true
+                archiveArtifacts artifacts: 'test-results.xml', fingerprint: true, allowEmptyArchive: true
+            }
+        }
+    }
+
 
         stage('Database Setup') {
             agent { label 'database' }
