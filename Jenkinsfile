@@ -80,7 +80,7 @@ pipeline {
         sonar.sources=.
         sonar.exclusions=**/venv/**,**/__pycache__/**,**/dist/**
         sonar.python.coverage.reportPaths=coverage.xml
-        sonar.host.url=http://localhost:9000
+        sonar.host.url=http://host.docker.internal:9000
                     """
 
                     // Run tests and coverage
@@ -99,29 +99,22 @@ pipeline {
                                 -e SONAR_TOKEN=%SONAR_AUTH_TOKEN% ^
                                 sonarsource/sonar-scanner-cli
                         '''
-                    }
-                }
-            }
-            post {
-                always {
-                    archiveArtifacts artifacts: 'coverage.xml', allowEmptyArchive: true
-                }
-            }
-        }
-
-        stage('Quality Gate') {
-            agent { label 'testing' }
-            steps {
+                    // waitForQualityGate here
                 timeout(time: 5, unit: 'MINUTES') {
-                    script {
-                        def qg = waitForQualityGate()
-                        if (qg.status != 'OK') {
-                            error "Quality Gate failed: ${qg.status}"
-                        }
+                    def qg = waitForQualityGate()
+                    if (qg.status != 'OK') {
+                        error "Quality Gate failed: ${qg.status}"
                     }
                 }
             }
         }
+    }
+    post {
+        always {
+            archiveArtifacts artifacts: 'coverage.xml', allowEmptyArchive: true
+        }
+    }
+}
 
         stage('Database Setup') {
             agent { label 'database' }
