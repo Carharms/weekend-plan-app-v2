@@ -93,11 +93,11 @@ pipeline {
                     """
 
                     // Run analysis with Windows commands (pytest, coverage)
-                    bat '''
+                    bat // add triple apostrophes here
                         pip install coverage pytest
                         coverage run -m pytest test_app.py --junitxml=test-results.xml || echo "Tests completed with issues"
                         coverage xml || echo "Coverage report generated"
-                    '''
+                    /// add triple apostrophes here
 
                     // Use the tool directive to get the correct path
                     def scannerHome = tool 'SonarQube'
