@@ -1,3 +1,4 @@
+
 pipeline {
     agent any
     
@@ -9,6 +10,7 @@ pipeline {
         DB_PORT = "3306"
         SONAR_SCANNER_HOME = tool 'SonarScanner'
         PATH = "${SONAR_SCANNER_HOME}/bin:${env.PATH}"
+        NOTIFICATION_EMAIL = "charms014@gmail.com"
     }
     
     stages {
@@ -153,6 +155,111 @@ pipeline {
     }
     
     post {
-    echo "Done"
+        
+        success {
+            script {
+                def emailBody = """
+                <h2>Build Completed Successfully!</h2>
+                <p><strong>Project:</strong> ${env.JOB_NAME}</p>
+                <p><strong>Build Number:</strong> ${env.BUILD_NUMBER}</p>
+                <p><strong>Branch:</strong> ${env.BRANCH_NAME ?: 'N/A'}</p>
+                <p><strong>Build URL:</strong> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+                <p><strong>Duration:</strong> ${currentBuild.durationString}</p>
+                <p><strong>Commit:</strong> ${env.GIT_COMMIT ?: 'N/A'}</p>
+                
+                <h3>Test Results:</h3>
+                <p>All tests passed successfully. Check the build logs for detailed results.</p>
+                
+                <p>Best regards,<br>Jenkins CI/CD System</p>
+                """
+                
+                emailext (
+                    to: "build-notifications@yourcompany.com",
+                    subject: "✅ BUILD SUCCESS: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
+                    body: emailBody,
+                    mimeType: 'text/html'
+                )
+            }
         }
+        
+        failure {
+            script {
+                def emailBody = """
+                <h2>Build Failed!</h2>
+                <p><strong>Project:</strong> ${env.JOB_NAME}</p>
+                <p><strong>Build Number:</strong> ${env.BUILD_NUMBER}</p>
+                <p><strong>Branch:</strong> ${env.BRANCH_NAME ?: 'N/A'}</p>
+                <p><strong>Build URL:</strong> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+                <p><strong>Console Output:</strong> <a href="${env.BUILD_URL}console">${env.BUILD_URL}console</a></p>
+                <p><strong>Duration:</strong> ${currentBuild.durationString}</p>
+                <p><strong>Commit:</strong> ${env.GIT_COMMIT ?: 'N/A'}</p>
+                
+                <h3>Failure Details:</h3>
+                <p>Please check the console output and logs for detailed error information.</p>
+                <p>Failed stage: ${env.STAGE_NAME ?: 'Unknown'}</p>
+                
+                <p>Please investigate and fix the issues.</p>
+                <p>Best regards,<br>Jenkins CI/CD System</p>
+                """
+                
+                emailext (
+                    to: "build-notifications@yourcompany.com",
+                    subject: "❌ BUILD FAILED: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
+                    body: emailBody,
+                    mimeType: 'text/html'
+                )
+            }
+        }
+        
+        unstable {
+            script {
+                def emailBody = """
+                <h2>Build Completed with Warnings!</h2>
+                <p><strong>Project:</strong> ${env.JOB_NAME}</p>
+                <p><strong>Build Number:</strong> ${env.BUILD_NUMBER}</p>
+                <p><strong>Branch:</strong> ${env.BRANCH_NAME ?: 'N/A'}</p>
+                <p><strong>Build URL:</strong> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+                <p><strong>Duration:</strong> ${currentBuild.durationString}</p>
+                <p><strong>Commit:</strong> ${env.GIT_COMMIT ?: 'N/A'}</p>
+                
+                <h3>Warning Details:</h3>
+                <p>The build completed but some tests failed or there were quality gate issues.</p>
+                <p>Please review the test results and address any failing tests.</p>
+                
+                <p>Best regards,<br>Jenkins CI/CD System</p>
+                """
+                
+                emailext (
+                    to: "build-notifications@yourcompany.com",
+                    subject: "⚠️ BUILD UNSTABLE: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
+                    body: emailBody,
+                    mimeType: 'text/html'
+                )
+            }
+        }
+        
+        aborted {
+            script {
+                def emailBody = """
+                <h2>Build Was Aborted!</h2>
+                <p><strong>Project:</strong> ${env.JOB_NAME}</p>
+                <p><strong>Build Number:</strong> ${env.BUILD_NUMBER}</p>
+                <p><strong>Branch:</strong> ${env.BRANCH_NAME ?: 'N/A'}</p>
+                <p><strong>Build URL:</strong> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+                <p><strong>Duration:</strong> ${currentBuild.durationString}</p>
+                
+                <p>The build was manually aborted or timed out.</p>
+                
+                <p>Best regards,<br>Jenkins CI/CD System</p>
+                """
+                
+                emailext (
+                    to: "build-notifications@yourcompany.com",
+                    subject: "🚫 BUILD ABORTED: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
+                    body: emailBody,
+                    mimeType: 'text/html'
+                )
+            }
+        }
+    }
 }
