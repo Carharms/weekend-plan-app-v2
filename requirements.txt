@@ -1,22 +1,7 @@
-# app core dependencies
-Flask==2.2.5
-gunicorn==21.2.0
-mysql-connector-python==8.0.33
-
-# testing dependencies and env variables
-python-dotenv==1.0.0
-
-# code QA
-pylint==2.17.4
-flake8==6.0.0
-# code coverage reports
-coverage==7.2.7
-# general testing framework
-pytest==7.4.0 
-
-# selenium e2e
-selenium==4.10.0
-webdriver-manager==4.0.0
-
-# load testing
-locust==2.15.1
+Flask==3.0.0
+mysql-connector-python==8.2.0
+pytest==7.4.3
+pytest-html==4.1.1
+selenium==4.16.0
+locust==2.24.1
+coverage==7.3.4

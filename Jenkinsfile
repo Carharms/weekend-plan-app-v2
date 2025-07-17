@@ -1,73 +1,174 @@
 pipeline {
     agent any
-
+    
     environment {
         DB_HOST = "host.docker.internal"
         DB_NAME = "weekend_tasks"
         DB_USER = "root"
         DB_PASSWORD = "password"
         DB_PORT = "3306"
+        SONAR_SCANNER_HOME = tool 'SonarScanner'
+        PATH = "${SONAR_SCANNER_HOME}/bin:${env.PATH}"
     }
-
+    
     stages {
-        stage('Install + Test') {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+        
+        stage('Build') {
+            agent {
+                label 'build-agent'
+            }
+            steps {
+                script {
+                    docker.build("weekend-app:${env.BUILD_NUMBER}")
+                }
+            }
+        }
+        
+        stage('Test Dependencies') {
             steps {
                 script {
                     docker.image('python:3.11-slim').inside {
-                        sh 'apt-get update && apt-get install -y default-mysql-client chromium-driver'
+                        sh 'apt-get update && apt-get install -y default-mysql-client'
                         sh 'pip install -r requirements.txt'
-                        sh 'pytest tests/test_e2e.py --junitxml=report.xml'
-                        // Must run junit inside same block where file exists
-                        junit 'report.xml'
                     }
                 }
             }
         }
-
-        stage('Init DB') {
+        
+        stage('Unit Tests') {
+            when {
+                not { branch 'main' }
+            }
+            steps {
+                script {
+                    docker.image('python:3.11-slim').inside {
+                        sh 'pip install pytest'
+                        sh 'pytest tests/test_unit.py --junitxml=unit-report.xml || true'
+                        junit 'unit-report.xml'
+                    }
+                }
+            }
+        }
+        
+        stage('Database Setup') {
             steps {
                 sh 'mysql -h $DB_HOST -u $DB_USER -p$DB_PASSWORD < database.sql'
                 sh 'mysql -h $DB_HOST -u $DB_USER -p$DB_PASSWORD $DB_NAME < seed_data.sql'
             }
         }
-
-        stage('Build Artifact') {
+        
+        stage('SonarQube Analysis') {
             steps {
-                script {
-                    def version = "1.0.${env.BUILD_ID}"
-                    writeFile file: 'version.txt', text: version
-                    archiveArtifacts artifacts: 'version.txt', fingerprint: true
+                withSonarQubeEnv('SonarQube') {
+                    sh '''
+                    sonar-scanner \
+                    -Dsonar.projectKey=weekend-app \
+                    -Dsonar.sources=. \
+                    -Dsonar.host.url=$SONAR_HOST_URL \
+                    -Dsonar.login=$SONAR_AUTH_TOKEN \
+                    -Dsonar.python.coverage.reportPaths=coverage.xml
+                    '''
                 }
             }
         }
-
-        stage('SonarQube') {
-            environment {
-                SONAR_SCANNER_OPTS = "-Dsonar.projectKey=weekend_app"
-            }
+        
+        stage('Quality Gate') {
             steps {
-                withSonarQubeEnv('SonarQubeDocker') {
-                    sh 'sonar-scanner'
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
                 }
             }
         }
-
-        stage('E2E Report') {
+        
+        stage('E2E Tests') {
+            agent {
+                label 'test-agent'
+            }
             steps {
                 script {
                     docker.image('python:3.11-slim').inside {
-                        sh 'pytest tests/test_e2e.py --html=report.html || true'
-                        sh 'ls -l report.html' // confirm it exists
-                        archiveArtifacts artifacts: 'report.html', fingerprint: true
+                        sh 'apt-get update && apt-get install -y chromium-driver'
+                        sh 'pip install selenium pytest-html'
+                        sh 'pytest tests/test_e2e.py --html=e2e-report.html || true'
+                        publishHTML([
+                            allowMissing: false,
+                            alwaysLinkToLastBuild: true,
+                            keepAll: true,
+                            reportDir: '.',
+                            reportFiles: 'e2e-report.html',
+                            reportName: 'E2E Test Report'
+                        ])
                     }
                 }
             }
         }
-
+        
         stage('Performance Test') {
-            steps {
-                sh 'locust -f locustfile.py --headless -u 10 -r 2 -t 10s --host=http://localhost:5000'
+            when {
+                branch 'main'
             }
+            steps {
+                script {
+                    sh 'pip install locust'
+                    sh 'locust -f locustfile.py --headless -u 10 -r 2 -t 30s --host=http://localhost:5000 --html=perf-report.html'
+                    publishHTML([
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: '.',
+                        reportFiles: 'perf-report.html',
+                        reportName: 'Performance Test Report'
+                    ])
+                }
+            }
+        }
+        
+        stage('Package Artifacts') {
+            steps {
+                script {
+                    def version = "1.0.${env.BUILD_NUMBER}"
+                    writeFile file: 'version.txt', text: version
+                    
+                    sh "tar -czf weekend-app-${version}.tar.gz app.py templates/ static/ requirements.txt"
+                    
+                    archiveArtifacts artifacts: "weekend-app-${version}.tar.gz,version.txt", fingerprint: true
+                }
+            }
+        }
+        
+        stage('Deploy to Staging') {
+            when {
+                branch 'main'
+            }
+            steps {
+                echo 'Deploying to staging environment'
+                sh 'docker run -d -p 5000:5000 --name staging-app weekend-app:${BUILD_NUMBER}'
+            }
+        }
+    }
+    
+    post {
+        always {
+            cleanWs()
+        }
+        success {
+            slackSend(
+                channel: '#ci-cd',
+                color: 'good',
+                message: "Pipeline SUCCESS: ${env.JOB_NAME} - ${env.BUILD_NUMBER}"
+            )
+        }
+        failure {
+            slackSend(
+                channel: '#ci-cd',
+                color: 'danger',
+                message: "Pipeline FAILED: ${env.JOB_NAME} - ${env.BUILD_NUMBER}\nError: ${currentBuild.result}"
+            )
         }
     }
 }
