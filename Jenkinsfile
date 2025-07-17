@@ -153,16 +153,17 @@ pipeline {
     }
     
     post {
-    always {
-        cleanWs()
+        always {
+            // The cleanWs() step needs to run inside a node block
+            node {
+                cleanWs()
+            }
+        }
+        success {
+            echo "Pipeline finished successfully."
+        }
+        failure {
+            echo "Pipeline failed."
+        }
     }
-    success {
-        // You can leave this block empty if no other success actions are needed
-        echo "Success"
-    }
-    failure {
-        // You can leave this block empty if no other failure actions are needed
-         echo "Failure"
-    }
-}
 }
