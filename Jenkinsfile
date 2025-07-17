@@ -9,7 +9,7 @@ pipeline {
         DB_PORT = "3306"
         SONAR_SCANNER_HOME = tool 'SonarScanner'
         PATH = "${SONAR_SCANNER_HOME}/bin:${env.PATH}"
-        NOTIFICATION_EMAIL = "build-notifications@yourcompany.com"
+        NOTIFICATION_EMAIL = "example@example.com"
     }
     
     stages {
