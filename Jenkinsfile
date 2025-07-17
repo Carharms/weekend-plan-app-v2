@@ -154,16 +154,18 @@ pipeline {
     
     post {
         always {
-            // The cleanWs() step needs to run inside a node block
-            node {
-                cleanWs()
-            }
+            sh 'docker-compose down || true'
+            cleanWs()
         }
         success {
-            echo "Pipeline finished successfully."
+            mail to: 'your-email@example.com',
+                 subject: "Pipeline Success: ${env.JOB_NAME} - ${env.BUILD_NUMBER}",
+                 body: "Build completed successfully."
         }
         failure {
-            echo "Pipeline failed."
+            mail to: 'your-email@example.com',
+                 subject: "Pipeline Failed: ${env.JOB_NAME} - ${env.BUILD_NUMBER}",
+                 body: "Build failed. Check logs."
         }
     }
 }
