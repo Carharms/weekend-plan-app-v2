@@ -20,7 +20,7 @@ pipeline {
         
         stage('Build') {
             agent {
-                label 'build-agent'
+                label 'build'
             }
             steps {
                 script {
@@ -153,22 +153,16 @@ pipeline {
     }
     
     post {
-        always {
-            cleanWs()
-        }
-        success {
-            slackSend(
-                channel: '#ci-cd',
-                color: 'good',
-                message: "Pipeline SUCCESS: ${env.JOB_NAME} - ${env.BUILD_NUMBER}"
-            )
-        }
-        failure {
-            slackSend(
-                channel: '#ci-cd',
-                color: 'danger',
-                message: "Pipeline FAILED: ${env.JOB_NAME} - ${env.BUILD_NUMBER}\nError: ${currentBuild.result}"
-            )
-        }
+    always {
+        cleanWs()
     }
+    success {
+        // You can leave this block empty if no other success actions are needed
+        // If there were other actions, they would remain here.
+    }
+    failure {
+        // You can leave this block empty if no other failure actions are needed
+        // If there were other actions, they would remain here.
+    }
+}
 }
