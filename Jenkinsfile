@@ -153,9 +153,7 @@ pipeline {
     }
     
     post {
-        always {
-            cleanWs()
-        }
+        
         success {
             mail to: 'build-notifications@yourcompany.com',
                  subject: "✅ BUILD SUCCESS: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
