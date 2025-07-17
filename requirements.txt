@@ -2,5 +2,7 @@ Flask==3.0.0
 mysql-connector-python==8.2.0
 pytest==7.4.3
 pytest-html==4.1.1
-selenium==4.16.0
+# both use gevent
+# selenium==4.16.0
+# locust==2.24.1
 coverage==7.3.4
