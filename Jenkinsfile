@@ -158,11 +158,11 @@ pipeline {
     }
     success {
         // You can leave this block empty if no other success actions are needed
-        // If there were other actions, they would remain here.
+        echo "Success"
     }
     failure {
         // You can leave this block empty if no other failure actions are needed
-        // If there were other actions, they would remain here.
+         echo "Failure"
     }
 }
 }
