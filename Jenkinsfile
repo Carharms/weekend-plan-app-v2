@@ -174,7 +174,7 @@ pipeline {
                 """
                 
                 emailext (
-                    to: "build-notifications@yourcompany.com",
+                    to: "charms014@gmail.com",
                     subject: "✅ BUILD SUCCESS: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
                     body: emailBody,
                     mimeType: 'text/html'
@@ -203,7 +203,7 @@ pipeline {
                 """
                 
                 emailext (
-                    to: "build-notifications@yourcompany.com",
+                    to: "charms014@gmail.com",
                     subject: "❌ BUILD FAILED: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
                     body: emailBody,
                     mimeType: 'text/html'
@@ -230,7 +230,7 @@ pipeline {
                 """
                 
                 emailext (
-                    to: "build-notifications@yourcompany.com",
+                    to: "charms014@gmail.com",
                     subject: "⚠️ BUILD UNSTABLE: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
                     body: emailBody,
                     mimeType: 'text/html'
@@ -254,7 +254,7 @@ pipeline {
                 """
                 
                 emailext (
-                    to: "build-notifications@yourcompany.com",
+                    to: "charms014@gmail.com",
                     subject: "🚫 BUILD ABORTED: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
                     body: emailBody,
                     mimeType: 'text/html'
