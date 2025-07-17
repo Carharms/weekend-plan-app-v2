@@ -153,10 +153,6 @@ pipeline {
     }
     
     post {
-    always {
-        node {
-            cleanWs()
+    echo "Done"
         }
-    }
-}
 }
