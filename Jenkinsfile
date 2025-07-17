@@ -153,59 +153,9 @@ pipeline {
     }
     
     post {
-        
-        success {
-            mail to: 'build-notifications@yourcompany.com',
-                 subject: "✅ BUILD SUCCESS: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
-                 body: """Build completed successfully!
-
-Project: ${env.JOB_NAME}
-Build Number: ${env.BUILD_NUMBER}
-Branch: ${env.BRANCH_NAME ?: 'N/A'}
-Build URL: ${env.BUILD_URL}
-Duration: ${currentBuild.durationString}
-Commit: ${env.GIT_COMMIT ?: 'N/A'}
-
-All tests passed successfully. Check the build logs for detailed results.
-
-Best regards,
-Jenkins CI/CD System"""
-        }
-        failure {
-            mail to: 'build-notifications@yourcompany.com',
-                 subject: "❌ BUILD FAILED: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
-                 body: """Build failed!
-
-Project: ${env.JOB_NAME}
-Build Number: ${env.BUILD_NUMBER}
-Branch: ${env.BRANCH_NAME ?: 'N/A'}
-Build URL: ${env.BUILD_URL}
-Console Output: ${env.BUILD_URL}console
-Duration: ${currentBuild.durationString}
-Commit: ${env.GIT_COMMIT ?: 'N/A'}
-
-Please check the console output and logs for detailed error information.
-
-Best regards,
-Jenkins CI/CD System"""
-        }
-        unstable {
-            mail to: 'build-notifications@yourcompany.com',
-                 subject: "⚠️ BUILD UNSTABLE: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
-                 body: """Build completed with warnings!
-
-Project: ${env.JOB_NAME}
-Build Number: ${env.BUILD_NUMBER}
-Branch: ${env.BRANCH_NAME ?: 'N/A'}
-Build URL: ${env.BUILD_URL}
-Duration: ${currentBuild.durationString}
-Commit: ${env.GIT_COMMIT ?: 'N/A'}
-
-The build completed but some tests failed or there were quality gate issues.
-Please review the test results and address any failing tests.
-
-Best regards,
-Jenkins CI/CD System"""
+    always {
+        node {
+            cleanWs()
         }
     }
 }
