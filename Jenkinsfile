@@ -51,15 +51,19 @@ pipeline {
 
 
     stage('Test Dependencies') {
-    steps {
-        script {
-            docker.image('python:3.11-slim').inside {
-                sh 'apt-get update && apt-get install -y default-mysql-client'
-                sh 'pip install -r requirements.txt'
-            }
+    agent {
+        docker {
+            image 'python:3.11-slim'
+            args '-u root'  // Run as root to install packages
         }
     }
+    steps {
+        sh 'apt-get update && apt-get install -y default-mysql-client'
+        sh 'pip install -r requirements.txt'
+    }
 }
+
+
     stage('Start MySQL via Compose') {
     steps {
         bat  '''
