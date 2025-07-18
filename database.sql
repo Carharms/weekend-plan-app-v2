@@ -1,6 +1,3 @@
--- DB Outline for weekend-plan-app
--- MySQL version: ??
-
 -- Create DB and use DB
 CREATE DATABASE IF NOT EXISTS weekend_tasks;
 USE weekend_tasks;
@@ -16,7 +13,6 @@ CREATE TABLE IF NOT EXISTS weekend_tasks (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Suggestion of using indexes: should you implement?
--- https://www.youtube.com/watch?v=gvRS9PxJivc
+-- Suggestion of using indexes for performance
 CREATE INDEX idx_day ON weekend_tasks(day);
 CREATE INDEX idx_start_time ON weekend_tasks(start_time);
