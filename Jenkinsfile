@@ -80,27 +80,31 @@ pipeline {
         }   
         
         stage('E2E Tests') {
-            agent {
-                label 'testing'
-            }
-            steps {
-                script {
-                    docker.image('python:3.11-slim').inside {
-                        sh 'apt-get update && apt-get install -y chromium-driver'
-                        sh 'pip install selenium pytest-html'
-                        sh 'pytest tests/test_e2e.py --html=e2e-report.html || true'
-                        publishHTML([
-                            allowMissing: false,
-                            alwaysLinkToLastBuild: true,
-                            keepAll: true,
-                            reportDir: '.',
-                            reportFiles: 'e2e-report.html',
-                            reportName: 'E2E Test Report'
-                        ])
-                    }
-                }
-            }
+    agent {
+        label 'testing'
+    }
+    steps {
+        script {
+            bat """
+            docker run --rm ^
+            -v %cd%:/workspace ^
+            -w /workspace ^
+            python:3.11-slim ^
+            sh -c "apt-get update && apt-get install -y chromium-driver && \
+                   pip install selenium pytest-html && \
+                   pytest tests/test_e2e.py --html=e2e-report.html || true"
+            """
+            publishHTML([
+                allowMissing: false,
+                alwaysLinkToLastBuild: true,
+                keepAll: true,
+                reportDir: '.',
+                reportFiles: 'e2e-report.html',
+                reportName: 'E2E Test Report'
+            ])
         }
+    }
+}
         
         stage('Performance Test') {
             when {
