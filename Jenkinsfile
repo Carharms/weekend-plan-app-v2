@@ -11,6 +11,12 @@ pipeline {
         SONAR_SCANNER_HOME = tool 'SonarScanner'
         PATH = "${SONAR_SCANNER_HOME}/bin:${env.PATH}"
         NOTIFICATION_EMAIL = "charms014@gmail.com"
+        JAVA_HOME = "${tool 'JDK21'}"
+        PATH = "${JAVA_HOME}/bin;${env.PATH}"
+    }
+
+    tools {
+    jdk 'JDK21'
     }
     
     stages {
