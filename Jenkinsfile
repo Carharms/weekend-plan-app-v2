@@ -32,7 +32,35 @@ pipeline {
         }
         
 
-        stage('SonarQube Analysis') {
+        
+
+
+    stage('Test Dependencies') {
+    steps {
+        script {
+            def workspace = pwd().replace('\\', '/')
+            docker.image('python:3.11-slim').inside("-v ${workspace}:/workspace -w /workspace") {
+                sh 'apt-get update && apt-get install -y default-mysql-client'
+                sh 'pip install -r requirements.txt'
+            }
+        }
+    }
+}
+
+
+    stage('Start MySQL via Compose') {
+    steps {
+        bat  '''
+        docker-compose up -d mysql
+        '''
+        sleep(time: 20, unit: 'SECONDS') // wait for MySQL to initialize
+    }
+    }
+
+
+
+
+    stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQube') {
                     bat '''
@@ -48,32 +76,6 @@ pipeline {
                 }
             }
         }
-
-
-    stage('Test Dependencies') {
-    agent {
-        docker {
-            image 'python:3.11-slim'
-            args '-u root'  // Run as root to install packages
-        }
-    }
-    steps {
-        sh 'apt-get update && apt-get install -y default-mysql-client'
-        sh 'pip install -r requirements.txt'
-    }
-}
-
-
-    stage('Start MySQL via Compose') {
-    steps {
-        bat  '''
-        docker-compose up -d mysql
-        '''
-        sleep(time: 20, unit: 'SECONDS') // wait for MySQL to initialize
-    }
-    }
-
-
         
         stage('Unit Tests') {
             when {
