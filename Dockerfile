@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
 
 COPY requirements.txt .
 RUN pip install -r requirements.txt
-RUN tar -czf weekend-app.tar.gz app.py templates static requirements.txt
+
 
 COPY . .
 
