@@ -154,13 +154,3 @@ pipeline {
         }
     }
     
-    post {
-        // This 'always' block will run regardless of the pipeline's status.
-        // It contains no steps, effectively doing the "absolute bare minimum".
-        always {
-            script {
-                // No actions needed here for simply passing the test
-            }
-        }
-    }
-}
