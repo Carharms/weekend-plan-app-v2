@@ -138,18 +138,13 @@ pipeline {
             def version = "1.0.${env.BUILD_NUMBER}"
             writeFile file: 'version.txt', text: version
 
-            bat """
-            docker run --rm ^
-            -v %cd%:/workspace ^
-            -w /workspace ^
-            python:3.11-slim ^
-            sh -c "tar -czf weekend-app-${version}.tar.gz app.py templates static requirements.txt version.txt"
-            """
+            bat "tar -czf weekend-app-${version}.tar.gz app.py templates static requirements.txt"
 
             archiveArtifacts artifacts: "weekend-app-${version}.tar.gz,version.txt", fingerprint: true
         }
     }
 }
+
         
         stage('Deploy to Staging') {
             when {
