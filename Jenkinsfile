@@ -132,15 +132,16 @@ pipeline {
     }
 }
         
-        stage('Package Artifacts') {
+       stage('Package Artifacts') {
     steps {
         script {
             def version = "1.0.${env.BUILD_NUMBER}"
             writeFile file: 'version.txt', text: version
-
-            bat "tar -czf weekend-app-${version}.tar.gz app.py templates static requirements.txt"
-
-            archiveArtifacts artifacts: "weekend-app-${version}.tar.gz,version.txt", fingerprint: true
+            docker.build("packaged-app:${version}")
+            docker.image("packaged-app:${version}").withRun('-v %cd%:/out') {
+                // The container could be built to drop the .tar.gz to /out
+            }
+            archiveArtifacts artifacts: "**/*.tar.gz,version.txt", fingerprint: true
         }
     }
 }
