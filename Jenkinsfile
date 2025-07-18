@@ -50,23 +50,12 @@ pipeline {
         }
 
 
-    stage('Start MySQL') {
+    stage('Start MySQL via Compose') {
     steps {
-        script {
-            docker.image('mysql:8.0').withRun('-e MYSQL_ROOT_PASSWORD=password -e MYSQL_DATABASE=weekend_tasks -p 3307:3307') { dbContainer ->
-                sleep(time: 20, unit: 'SECONDS') // give MySQL time to initialize
-
-                sh '''
-                echo "Seeding DB..."
-                docker cp database.sql ${dbContainer.id}:/database.sql
-                docker cp seed_data.sql ${dbContainer.id}:/seed_data.sql
-                docker exec ${dbContainer.id} mysql -uroot -ppassword weekend_tasks < /database.sql
-                docker exec ${dbContainer.id} mysql -uroot -ppassword weekend_tasks < /seed_data.sql
-                '''
-            }
-        }
+        sh 'docker-compose up -d db'
+        sleep(time: 20, unit: 'SECONDS') // wait for MySQL to initialize
     }
-}
+    }
 
 
         
