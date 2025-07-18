@@ -36,7 +36,7 @@ pipeline {
             steps {
                 withSonarQubeEnv('SonarQube') {
                     bat '''
-                    sonar-scanner ^
+                    SonarScanner ^
                     -Dsonar.projectKey=weekend-app ^
                     -Dsonar.sources=. ^
                     -Dsonar.host.url=%SONAR_HOST_URL% ^
