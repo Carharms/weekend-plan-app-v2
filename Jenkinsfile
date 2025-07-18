@@ -52,43 +52,13 @@ pipeline {
         stage('Database Setup') {
             steps {
                 script {
-                    // Method 1: Use Docker run command directly (Windows-friendly)
-                    try {
-                        bat '''
-                        docker run --rm ^
-                        -v "%CD%":/workspace ^
-                        -w /workspace ^
-                        mysql:8.0 ^
-                        mysql -h %DB_HOST% -u %DB_USER% -p%DB_PASSWORD% < database.sql
-                        '''
-                        
-                        bat '''
-                        docker run --rm ^
-                        -v "%CD%":/workspace ^
-                        -w /workspace ^
-                        mysql:8.0 ^
-                        mysql -h %DB_HOST% -u %DB_USER% -p%DB_PASSWORD% %DB_NAME% < seed_data.sql
-                        '''
-                        
-                        echo "Database setup completed successfully!"
-                        
-                        // Verify database creation
-                        bat '''
-                        docker run --rm ^
-                        mysql:8.0 ^
-                        mysql -h %DB_HOST% -u %DB_USER% -p%DB_PASSWORD% -e "SHOW DATABASES; USE %DB_NAME%; SHOW TABLES; SELECT COUNT(*) as record_count FROM weekend_tasks;"
-                        '''
-                        
-                    } catch (Exception e) {
-                        echo "Docker method failed, trying alternative approach..."
-                        
-                        // Method 2: Use PowerShell with Docker
-                        powershell '''
-                        $currentDir = Get-Location
-                        docker run --rm -v "${currentDir}:/workspace" -w /workspace mysql:8.0 mysql -h $env:DB_HOST -u $env:DB_USER -p$env:DB_PASSWORD < database.sql
-                        docker run --rm -v "${currentDir}:/workspace" -w /workspace mysql:8.0 mysql -h $env:DB_HOST -u $env:DB_USER -p$env:DB_PASSWORD $env:DB_NAME < seed_data.sql
-                        '''
-                    }
+                    // Simple Docker run approach that works on Windows
+                    bat '''
+                    echo Setting up database...
+                    docker run --rm -v "%CD%":/workspace -w /workspace mysql:8.0 mysql -h %DB_HOST% -u %DB_USER% -p%DB_PASSWORD% -e "source /workspace/database.sql"
+                    docker run --rm -v "%CD%":/workspace -w /workspace mysql:8.0 mysql -h %DB_HOST% -u %DB_USER% -p%DB_PASSWORD% %DB_NAME% -e "source /workspace/seed_data.sql"
+                    echo Database setup completed!
+                    '''
                 }
             }
         }
