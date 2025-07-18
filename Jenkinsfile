@@ -38,11 +38,13 @@ pipeline {
     stage('Test Dependencies') {
     steps {
         script {
-            def workspace = pwd().replace('\\', '/')
-            docker.image('python:3.11-slim').inside("-v ${workspace}:/workspace -w /workspace") {
-                sh 'apt-get update && apt-get install -y default-mysql-client'
-                sh 'pip install -r requirements.txt'
-            }
+            bat """
+            docker run --rm ^
+            -v %cd%:/workspace ^
+            -w /workspace ^
+            python:3.11-slim ^
+            sh -c "apt-get update && apt-get install -y default-mysql-client && pip install -r requirements.txt"
+            """
         }
     }
 }
