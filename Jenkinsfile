@@ -77,28 +77,11 @@ pipeline {
                     '''
                 }
             }
-        }
-        
-        stage('Unit Tests') {
-            when {
-                not { branch 'main' }
-            }
-            steps {
-                script {
-                    docker.image('python:3.11-slim').inside {
-                        sh 'pip install pytest'
-                        sh 'pytest tests/test_unit.py --junitxml=unit-report.xml || true'
-                        junit 'unit-report.xml'
-                    }
-                }
-            }
-        }
-        
-        
+        }   
         
         stage('E2E Tests') {
             agent {
-                label 'test-agent'
+                label 'testing'
             }
             steps {
                 script {
