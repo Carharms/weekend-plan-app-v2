@@ -7,7 +7,7 @@ pipeline {
         DB_NAME = "weekend_tasks"
         DB_USER = "root"
         DB_PASSWORD = "password"
-        DB_PORT = "3306"
+        DB_PORT = "3308"
         SONAR_SCANNER_HOME = tool 'SonarScanner'
         PATH = "${SONAR_SCANNER_HOME}/bin:${env.PATH}"
         NOTIFICATION_EMAIL = "charms014@gmail.com"
@@ -50,6 +50,16 @@ pipeline {
         }
 
 
+    stage('Test Dependencies') {
+    steps {
+        script {
+            docker.image('python:3.11-slim').inside {
+                sh 'apt-get update && apt-get install -y default-mysql-client'
+                sh 'pip install -r requirements.txt'
+            }
+        }
+    }
+}
     stage('Start MySQL via Compose') {
     steps {
         bat  '''
@@ -60,19 +70,6 @@ pipeline {
     }
 
 
-        
-        
-
-        stage('Test Dependencies') {
-    steps {
-        script {
-            docker.image('python:3.11-slim').inside {
-                bat 'apt-get update && apt-get install -y default-mysql-client'
-                bat 'pip install -r requirements.txt'
-            }
-        }
-    }
-}
         
         stage('Unit Tests') {
             when {
