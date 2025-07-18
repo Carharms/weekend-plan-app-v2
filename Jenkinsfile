@@ -53,22 +53,7 @@ pipeline {
             }
         }
 
-        stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('SonarQube') {
-                    bat '''
-                    set JAVA_HOME=C:\\Program Files\\Java\\jdk-21
-                    set PATH=%JAVA_HOME%\\bin;%PATH%
-                    %SONAR_SCANNER_HOME%\\bin\\sonar-scanner.bat ^
-                    -Dsonar.projectKey=weekend-app ^
-                    -Dsonar.sources=. ^
-                    -Dsonar.host.url=%SONAR_HOST_URL% ^
-                    -Dsonar.login=%SONAR_AUTH_TOKEN% ^
-                    -Dsonar.python.coverage.reportPaths=coverage.xml
-                    '''
-                }
-            }
-        }   
+       
         
         stage('E2E Tests') {
             steps {
