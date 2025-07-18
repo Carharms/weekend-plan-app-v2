@@ -49,22 +49,25 @@ pipeline {
             }
         }
 
-        stage('Database Setup') {
+
+    stage('Start MySQL') {
     steps {
         script {
-            bat '''
-            echo Setting up database...
+            docker.image('mysql:8.0').withRun('-e MYSQL_ROOT_PASSWORD=password -e MYSQL_DATABASE=weekend_tasks -p 3306:3306') { dbContainer ->
+                sleep(time: 20, unit: 'SECONDS') // give MySQL time to initialize
 
-            docker run --rm --network=host -v "%CD%":/workspace -w /workspace mysql:8.0 bash -c ^
-            "mysql -h 172.17.0.1 -u root -ppassword -e \\"CREATE DATABASE IF NOT EXISTS weekend_tasks;\\" && ^
-             mysql -h 172.17.0.1 -u root -ppassword weekend_tasks < /workspace/database.sql && ^
-             mysql -h 172.17.0.1 -u root -ppassword weekend_tasks < /workspace/seed_data.sql"
-
-            echo Database setup completed!
-            '''
-                }
+                sh '''
+                echo "Seeding DB..."
+                docker cp database.sql ${dbContainer.id}:/database.sql
+                docker cp seed_data.sql ${dbContainer.id}:/seed_data.sql
+                docker exec ${dbContainer.id} mysql -uroot -ppassword weekend_tasks < /database.sql
+                docker exec ${dbContainer.id} mysql -uroot -ppassword weekend_tasks < /seed_data.sql
+                '''
             }
         }
+    }
+}
+
 
         
         
