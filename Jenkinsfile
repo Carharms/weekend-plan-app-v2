@@ -31,6 +31,12 @@ pipeline {
             }
         }
         
+        stage('Debug Sonar Path') {
+    steps {
+        bat "echo SONAR_SCANNER_HOME=%SONAR_SCANNER_HOME%"
+        bat "dir %SONAR_SCANNER_HOME%\\bin"
+    }
+}
 
         stage('SonarQube Analysis') {
             steps {
