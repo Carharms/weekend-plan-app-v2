@@ -107,37 +107,49 @@ pipeline {
 }
         
         stage('Performance Test') {
-            when {
-                branch 'main'
-            }
-            steps {
-                script {
-                    sh 'pip install locust'
-                    sh 'locust -f locustfile.py --headless -u 10 -r 2 -t 30s --host=http://localhost:5000 --html=perf-report.html'
-                    publishHTML([
-                        allowMissing: false,
-                        alwaysLinkToLastBuild: true,
-                        keepAll: true,
-                        reportDir: '.',
-                        reportFiles: 'perf-report.html',
-                        reportName: 'Performance Test Report'
-                    ])
-                }
-            }
+    when {
+        branch 'main'
+    }
+    steps {
+        script {
+            bat """
+            docker run --rm ^
+            -v %cd%:/workspace ^
+            -w /workspace ^
+            python:3.11-slim ^
+            sh -c "pip install locust && \
+                   locust -f locustfile.py --headless -u 10 -r 2 -t 30s --host=http://host.docker.internal:5000 --html=perf-report.html"
+            """
+            publishHTML([
+                allowMissing: false,
+                alwaysLinkToLastBuild: true,
+                keepAll: true,
+                reportDir: '.',
+                reportFiles: 'perf-report.html',
+                reportName: 'Performance Test Report'
+            ])
         }
+    }
+}
         
         stage('Package Artifacts') {
-            steps {
-                script {
-                    def version = "1.0.${env.BUILD_NUMBER}"
-                    writeFile file: 'version.txt', text: version
-                    
-                    sh "tar -czf weekend-app-${version}.tar.gz app.py templates/ static/ requirements.txt"
-                    
-                    archiveArtifacts artifacts: "weekend-app-${version}.tar.gz,version.txt", fingerprint: true
-                }
-            }
+    steps {
+        script {
+            def version = "1.0.${env.BUILD_NUMBER}"
+            writeFile file: 'version.txt', text: version
+
+            bat """
+            docker run --rm ^
+            -v %cd%:/workspace ^
+            -w /workspace ^
+            python:3.11-slim ^
+            sh -c "tar -czf weekend-app-${version}.tar.gz app.py templates static requirements.txt version.txt"
+            """
+
+            archiveArtifacts artifacts: "weekend-app-${version}.tar.gz,version.txt", fingerprint: true
         }
+    }
+}
         
         stage('Deploy to Staging') {
             when {
