@@ -53,7 +53,7 @@ pipeline {
     stage('Start MySQL') {
     steps {
         script {
-            docker.image('mysql:8.0').withRun('-e MYSQL_ROOT_PASSWORD=password -e MYSQL_DATABASE=weekend_tasks -p 3306:3306') { dbContainer ->
+            docker.image('mysql:8.0').withRun('-e MYSQL_ROOT_PASSWORD=password -e MYSQL_DATABASE=weekend_tasks -p 3307:3307') { dbContainer ->
                 sleep(time: 20, unit: 'SECONDS') // give MySQL time to initialize
 
                 sh '''
