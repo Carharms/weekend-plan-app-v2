@@ -11,12 +11,6 @@ pipeline {
         SONAR_SCANNER_HOME = tool 'SonarScanner'
         PATH = "${SONAR_SCANNER_HOME}/bin:${env.PATH}"
         NOTIFICATION_EMAIL = "charms014@gmail.com"
-        JAVA_HOME = "${tool 'JDK21'}"
-        PATH = "${JAVA_HOME}/bin;${env.PATH}"
-    }
-
-    tools {
-    jdk 'JDK21'
     }
     
     stages {
@@ -42,6 +36,8 @@ pipeline {
             steps {
                 withSonarQubeEnv('SonarQube') {
                     bat '''
+                    set JAVA_HOME=C:\Program Files\Java\jdk-21
+                    set PATH=%JAVA_HOME%\\bin;%PATH%
                     %SONAR_SCANNER_HOME%\\bin\\sonar-scanner.bat ^
                     -Dsonar.projectKey=weekend-app ^
                     -Dsonar.sources=. ^
