@@ -35,12 +35,12 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQube') {
-                    sh '''
-                    sonar-scanner \
-                    -Dsonar.projectKey=weekend-app \
-                    -Dsonar.sources=. \
-                    -Dsonar.host.url=$SONAR_HOST_URL \
-                    -Dsonar.login=$SONAR_AUTH_TOKEN \
+                    bat '''
+                    sonar-scanner ^
+                    -Dsonar.projectKey=weekend-app ^
+                    -Dsonar.sources=. ^
+                    -Dsonar.host.url=%SONAR_HOST_URL% ^
+                    -Dsonar.login=%SONAR_AUTH_TOKEN% ^
                     -Dsonar.python.coverage.reportPaths=coverage.xml
                     '''
                 }
