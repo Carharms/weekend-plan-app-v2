@@ -52,13 +52,56 @@ pipeline {
         stage('Database Setup') {
             steps {
                 script {
-                    // Simple Docker run approach that works on Windows
-                    bat '''
-                    echo Setting up database...
-                    docker run --rm -v "%CD%":/workspace -w /workspace mysql:8.0 mysql -h %DB_HOST% -u %DB_USER% -p%DB_PASSWORD% -e "source /workspace/database.sql"
-                    docker run --rm -v "%CD%":/workspace -w /workspace mysql:8.0 mysql -h %DB_HOST% -u %DB_USER% -p%DB_PASSWORD% %DB_NAME% -e "source /workspace/seed_data.sql"
-                    echo Database setup completed!
-                    '''
+                    try {
+                        // First, start a MySQL server container
+                        bat '''
+                        echo Starting MySQL server container...
+                        docker run --name mysql-server-temp -e MYSQL_ROOT_PASSWORD=%DB_PASSWORD% -e MYSQL_DATABASE=%DB_NAME% -p 3306:3306 -d mysql:8.0
+                        '''
+                        
+                        // Wait for MySQL to be ready
+                        bat '''
+                        echo Waiting for MySQL to be ready...
+                        timeout /t 30 /nobreak
+                        '''
+                        
+                        // Test connection
+                        bat '''
+                        echo Testing MySQL connection...
+                        docker exec mysql-server-temp mysql -u root -p%DB_PASSWORD% -e "SELECT 'MySQL is ready!' as status;"
+                        '''
+                        
+                        // Create database and tables
+                        bat '''
+                        echo Creating database schema...
+                        docker exec -i mysql-server-temp mysql -u root -p%DB_PASSWORD% < database.sql
+                        '''
+                        
+                        // Seed data
+                        bat '''
+                        echo Seeding test data...
+                        docker exec -i mysql-server-temp mysql -u root -p%DB_PASSWORD% %DB_NAME% < seed_data.sql
+                        '''
+                        
+                        // Verify setup
+                        bat '''
+                        echo Verifying database setup...
+                        docker exec mysql-server-temp mysql -u root -p%DB_PASSWORD% -e "USE %DB_NAME%; SHOW TABLES; SELECT COUNT(*) as 'Total Records' FROM weekend_tasks; SELECT day, COUNT(*) as 'Events per Day' FROM weekend_tasks GROUP BY day;"
+                        '''
+                        
+                        echo "✓ Database setup completed successfully!"
+                        
+                    } catch (Exception e) {
+                        echo "Error during database setup: ${e.getMessage()}"
+                        throw e
+                    } finally {
+                        // Clean up: stop and remove the temporary container
+                        bat '''
+                        echo Cleaning up temporary MySQL container...
+                        docker stop mysql-server-temp || echo "Container already stopped"
+                        docker rm mysql-server-temp || echo "Container already removed"
+                        '''
+                    }
                 }
             }
         }
