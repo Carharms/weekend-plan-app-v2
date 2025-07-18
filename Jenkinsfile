@@ -8,7 +8,7 @@ pipeline {
         DB_USER = "root"
         DB_PASSWORD = "password"
         DB_PORT = "3306"
-        SONAR_SCANNER_HOME = tool 'SonarScanner'
+        SONAR_SCANNER_HOME = tool 'SonarQube'
         PATH = "${SONAR_SCANNER_HOME}/bin:${env.PATH}"
         NOTIFICATION_EMAIL = "charms014@gmail.com"
     }
