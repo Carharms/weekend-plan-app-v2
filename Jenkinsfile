@@ -51,8 +51,10 @@ pipeline {
 
         stage('Database Setup') {
             steps {
-                sh 'mysql -h $DB_HOST -u $DB_USER -p$DB_PASSWORD < database.sql'
-                sh 'mysql -h $DB_HOST -u $DB_USER -p$DB_PASSWORD $DB_NAME < seed_data.sql'
+                bat '''
+                mysql -h %DB_HOST% -u %DB_USER% -p%DB_PASSWORD% < database.sql
+                mysql -h %DB_HOST% -u %DB_USER% -p%DB_PASSWORD% %DB_NAME% < seed_data.sql
+                '''
             }
         }
         
