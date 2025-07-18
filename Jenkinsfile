@@ -36,7 +36,7 @@ pipeline {
             steps {
                 withSonarQubeEnv('SonarQube') {
                     bat '''
-                    C:\\ProgramData\\Jenkins\\.jenkins\\tools\\hudson.plugins.sonar.SonarRunnerInstallation\\SonarScanner\\bin\\sonar-scanner.bat ^
+                    %SONAR_SCANNER_HOME%\\bin\\sonar-scanner.bat ^
                     -Dsonar.projectKey=weekend-app ^
                     -Dsonar.sources=. ^
                     -Dsonar.host.url=%SONAR_HOST_URL% ^
