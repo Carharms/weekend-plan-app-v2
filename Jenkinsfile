@@ -53,22 +53,34 @@ pipeline {
             steps {
                 script {
                     try {
-                        // First, start a MySQL server container
+                        // Clean up any existing containers first
                         bat '''
-                        echo Starting MySQL server container...
-                        docker run --name mysql-server-temp -e MYSQL_ROOT_PASSWORD=%DB_PASSWORD% -e MYSQL_DATABASE=%DB_NAME% -p 3306:3306 -d mysql:8.0
+                        echo Cleaning up any existing MySQL containers...
+                        docker stop mysql-server-temp 2>nul || echo "No existing container to stop"
+                        docker rm mysql-server-temp 2>nul || echo "No existing container to remove"
+                        '''
+                        
+                        // Start MySQL server container on a different port
+                        bat '''
+                        echo Starting MySQL server container on port 3307...
+                        docker run --name mysql-server-temp -e MYSQL_ROOT_PASSWORD=%DB_PASSWORD% -e MYSQL_DATABASE=%DB_NAME% -p 3307:3306 -d mysql:8.0
                         '''
                         
                         // Wait for MySQL to be ready
                         bat '''
                         echo Waiting for MySQL to be ready...
-                        timeout /t 30 /nobreak
+                        timeout /t 45 /nobreak
                         '''
                         
-                        // Test connection
+                        // Test connection multiple times to ensure readiness
                         bat '''
                         echo Testing MySQL connection...
-                        docker exec mysql-server-temp mysql -u root -p%DB_PASSWORD% -e "SELECT 'MySQL is ready!' as status;"
+                        for /l %%i in (1,1,5) do (
+                            docker exec mysql-server-temp mysql -u root -p%DB_PASSWORD% -e "SELECT 'MySQL is ready!' as status;" && goto :ready
+                            echo Attempt %%i failed, waiting 10 more seconds...
+                            timeout /t 10 /nobreak
+                        )
+                        :ready
                         '''
                         
                         // Create database and tables
@@ -93,6 +105,11 @@ pipeline {
                         
                     } catch (Exception e) {
                         echo "Error during database setup: ${e.getMessage()}"
+                        // Show container logs for debugging
+                        bat '''
+                        echo Showing container logs for debugging...
+                        docker logs mysql-server-temp || echo "No logs available"
+                        '''
                         throw e
                     } finally {
                         // Clean up: stop and remove the temporary container
