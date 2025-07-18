@@ -53,7 +53,7 @@ pipeline {
     stage('Start MySQL via Compose') {
     steps {
         bat  '''
-        docker-compose up -d db
+        docker-compose up -d mysql
         '''
         sleep(time: 20, unit: 'SECONDS') // wait for MySQL to initialize
     }
@@ -64,15 +64,15 @@ pipeline {
         
 
         stage('Test Dependencies') {
-            steps {
-                script {
-                    docker.image('python:3.11-slim').inside {
-                        sh 'apt-get update && apt-get install -y default-mysql-client'
-                        sh 'pip install -r requirements.txt'
-                    }
-                }
+    steps {
+        script {
+            docker.image('python:3.11-slim').inside {
+                bat 'apt-get update && apt-get install -y default-mysql-client'
+                bat 'pip install -r requirements.txt'
             }
         }
+    }
+}
         
         stage('Unit Tests') {
             when {
