@@ -51,10 +51,14 @@ pipeline {
 
         stage('Database Setup') {
             steps {
-                bat '''
-                mysql -h %DB_HOST% -u %DB_USER% -p%DB_PASSWORD% < database.sql
-                mysql -h %DB_HOST% -u %DB_USER% -p%DB_PASSWORD% %DB_NAME% < seed_data.sql
-                '''
+                script {
+                    docker.image('mysql:8.0').inside("--link mysql-server:mysql") {
+                        sh '''
+                        mysql -h ${DB_HOST} -u ${DB_USER} -p${DB_PASSWORD} < database.sql
+                        mysql -h ${DB_HOST} -u ${DB_USER} -p${DB_PASSWORD} ${DB_NAME} < seed_data.sql
+                        '''
+                    }
+                }
             }
         }
         
