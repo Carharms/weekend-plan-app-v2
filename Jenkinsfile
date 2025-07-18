@@ -52,7 +52,9 @@ pipeline {
 
     stage('Start MySQL via Compose') {
     steps {
-        sh 'docker-compose up -d db'
+        bat  '''
+        docker-compose up -d db
+        '''
         sleep(time: 20, unit: 'SECONDS') // wait for MySQL to initialize
     }
     }
