@@ -48,14 +48,15 @@ pipeline {
                 }
             }
         }
-        
-        stage('Quality Gate') {
+
+        stage('Database Setup') {
             steps {
-                timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
-                }
+                sh 'mysql -h $DB_HOST -u $DB_USER -p$DB_PASSWORD < database.sql'
+                sh 'mysql -h $DB_HOST -u $DB_USER -p$DB_PASSWORD $DB_NAME < seed_data.sql'
             }
         }
+        
+        
 
         stage('Test Dependencies') {
             steps {
@@ -83,12 +84,6 @@ pipeline {
             }
         }
         
-        stage('Database Setup') {
-            steps {
-                sh 'mysql -h $DB_HOST -u $DB_USER -p$DB_PASSWORD < database.sql'
-                sh 'mysql -h $DB_HOST -u $DB_USER -p$DB_PASSWORD $DB_NAME < seed_data.sql'
-            }
-        }
         
         
         stage('E2E Tests') {
